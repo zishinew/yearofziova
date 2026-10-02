@@ -3,8 +3,8 @@
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { PixelLiquidBg } from "@/components/ui/pixel-liquid-bg";
-import { BeatCatalog } from "@/components/beat-catalog";
-import { BeatVault } from "@/components/beat-vault";
+import { SoundPlaylist } from "@/components/sound-playlist";
+import { beats, loops } from "@/data/beats";
 
 export function SiteCanvas() {
   const [canvasReady, setCanvasReady] = useState(false);
@@ -34,7 +34,7 @@ export function SiteCanvas() {
             <button type="button" onClick={() => setView("beats")}>Beat Vault</button>
             <button type="button" onClick={() => setView("loops")}>Loop Kit</button>
           </div>
-        ) : view === "beats" ? <BeatVault /> : <BeatCatalog kind="loops" />}
+        ) : <SoundPlaylist key={view} kind={view} tracks={view === "beats" ? beats : loops} />}
       </main>
       {loading && (
         <div

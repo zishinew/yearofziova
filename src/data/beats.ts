@@ -1,10 +1,16 @@
 export type Beat = {
   id: string;
   title: string;
-  genre: "Trap" | "R&B" | "Experimental";
+  genre?: string;
   bpm: number;
-  key: string;
-  audioUrl: string;
+  key?: string;
+  audioUrl?: string;
+  coverArt?: string;
+  durationSeconds?: number;
+  description?: string;
+  moods?: string[];
+  tags?: string[];
+  notes?: string[];
   purchaseUrl?: string;
 };
 
