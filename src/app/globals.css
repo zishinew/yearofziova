@@ -37,37 +37,20 @@ body {
   margin-top: -64px;
   border-radius: 50%;
   transform: translate3d(0, 0, 0) scale(1);
-  transition: transform 900ms cubic-bezier(0.76, 0, 0.24, 1);
+  transition: transform 900ms cubic-bezier(0.76, 0, 0.24, 1), opacity 900ms ease;
   will-change: transform;
 }
 
 .site-fluid { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: 0.32; }
-.portfolio-main { width: 100%; }
+.vault-landing { min-height: 100dvh; display: grid; place-items: center; }
+.vault-choices { display: flex; align-items: center; justify-content: center; gap: clamp(64px, 14vw, 220px); padding: 24px; }
+.vault-choices button { cursor: pointer; font-family: "Courier New", monospace; font-size: 16px; padding: 24px 12px; transition: color 180ms, transform 180ms; }
+.vault-choices button:hover { color: #e8227a; transform: translateY(-4px); }
+.vault-content { min-height: 100dvh; padding-top: 72px; }
+.vault-back { position: absolute; top: 24px; left: clamp(24px, 5vw, 96px); font-size: 12px; display: flex; gap: 12px; align-items: center; cursor: pointer; }
+.ziova-logo { z-index: 60; }
 .section-shell { padding-inline: clamp(24px, 5vw, 96px); }
 .eyebrow { font-family: "Courier New", monospace; font-size: 10px; line-height: 1.5; letter-spacing: 0.1em; }
-.site-header { position: fixed; inset: 0 0 auto; height: 96px; z-index: 60; background: rgba(255,255,255,0.88); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(23,23,23,0.08); transition: background 700ms, border-color 700ms; }
-.site-header-loading { background: transparent; backdrop-filter: none; border-color: transparent; }
-.header-nav { position: absolute; inset-block: 0; display: flex; align-items: center; gap: 28px; font-size: 12px; }
-.header-nav-left { left: clamp(24px, 5vw, 96px); }
-.header-nav-right { right: clamp(24px, 5vw, 96px); }
-.header-nav a { transition: color 180ms; }
-.header-nav a:hover { color: #e8227a; }
-.site-header-loading .header-nav { opacity: 0; pointer-events: none; }
-.hero { min-height: 100svh; padding-top: 132px; display: flex; flex-direction: column; }
-.hero-topline, .hero-bottom { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.hero-topline { color: #666; }
-.hero-copy { padding-block: clamp(72px, 10vh, 140px) 64px; }
-.hero-intro { margin-bottom: 24px; color: #656565; }
-.hero h1 { font-size: clamp(72px, 11.7vw, 180px); font-weight: 400; line-height: 0.88; letter-spacing: -0.075em; position: relative; width: fit-content; }
-.hero h1 span { color: #e8227a; }
-.hero h1 sup { font-size: 0.2em; vertical-align: top; display: inline-block; margin-left: 22px; margin-top: 14px; color: #171717; letter-spacing: 0; }
-.hero-description { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; margin-top: 42px; max-width: 760px; }
-.hero-description p { color: #525252; font-size: 14px; line-height: 1.7; }
-.primary-link { display: flex; justify-content: space-between; align-items: center; gap: 40px; background: #171717; color: white; padding: 18px 22px; font-size: 12px; transition: background 180ms; }
-.primary-link:hover { background: #e8227a; }
-.primary-link span { font-size: 20px; }
-.hero-bottom { margin-top: auto; border-top: 1px solid rgba(23,23,23,0.14); padding-block: 22px; color: #656565; }
-.hero-bottom a { color: #171717; }
 .catalog-section { background: rgba(255,255,255,0.95); padding-block: 100px 48px; }
 .catalog-section + .catalog-section { border-top: 1px solid #e5e5e5; }
 .section-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 48px; }
@@ -104,31 +87,10 @@ body {
 .audio-error { color: #be185d; font-size: 12px; padding-block: 12px; }
 .now-playing { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 20px; background: #171717; color: white; padding: 16px 24px; font-size: 12px; width: max-content; max-width: 90vw; }
 .now-playing button { cursor: pointer; }
-.about-section { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; padding-block: 112px; border-top: 1px solid #e5e5e5; background: rgba(255,255,255,0.85); }
-.about-label { display: flex; flex-direction: column; justify-content: space-between; gap: 36px; }
-.about-signature { font-size: clamp(64px, 9vw, 130px); letter-spacing: -0.08em; color: #e8227a; line-height: 1; }
-.about-copy h2 { font-size: clamp(32px, 3.5vw, 48px); font-weight: 400; letter-spacing: -0.05em; line-height: 1.12; margin-bottom: 28px; }
-.about-copy p { font-size: 14px; line-height: 1.8; color: #737373; max-width: 390px; margin-bottom: 16px; }
-.about-copy .text-link { margin-top: 16px; }
-.contact-section { padding-block: 96px 64px; border-top: 1px solid rgba(23,23,23,0.12); }
-.contact-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-block: 48px; }
-.contact-heading h2 { font-size: clamp(56px, 8vw, 120px); font-weight: 400; line-height: 0.95; letter-spacing: -0.07em; }
-.contact-heading h2 span { color: #e8227a; }
-.contact-arrow { font-size: clamp(64px, 10vw, 128px); line-height: 1; transition: color 180ms, transform 180ms; }
-.contact-arrow:hover { color: #e8227a; transform: translate(4px, -4px); }
-.contact-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; }
-.contact-bottom p { font-size: 13px; line-height: 1.8; color: #656565; }
-.site-footer { display: flex; justify-content: space-between; gap: 24px; padding-block: 28px; border-top: 1px solid rgba(23,23,23,0.12); background: rgba(255,255,255,0.9); color: #737373; }
 
 @media (max-width: 639px) {
-  .header-nav { font-size: 11px; gap: 18px; }
-  .header-about { display: none; }
-  .hero-topline { font-size: 8px; }
-  .hero-copy { padding-top: 96px; }
-  .hero h1 { font-size: clamp(62px, 14vw, 90px); }
-  .hero h1 sup { margin-left: 12px; }
-  .hero-description { align-items: flex-start; flex-direction: column; gap: 24px; }
-  .hero-bottom { font-size: 8px; }
+  .vault-choices { gap: 40px; }
+  .vault-choices button { font-size: 14px; }
   .catalog-section { padding-top: 64px; }
   .section-heading { align-items: flex-start; flex-direction: column; margin-bottom: 32px; }
   .catalog-toolbar { align-items: flex-start; flex-direction: column; gap: 16px; }
@@ -141,15 +103,6 @@ body {
   .beat-tempo { grid-column: 1; padding-left: 60px; }
   .beat-price { grid-column: 2; grid-row: 1; }
   .catalog-footnote { flex-direction: column; gap: 12px; }
-  .about-section { grid-template-columns: 1fr; gap: 48px; padding-block: 64px; }
-  .about-label { flex-direction: row; align-items: center; }
-  .contact-section { padding-block: 64px 48px; }
-  .contact-heading { margin-block: 36px; }
-  .contact-heading h2 { font-size: clamp(46px, 12vw, 70px); }
-  .contact-arrow { font-size: 48px; }
-  .contact-bottom { flex-direction: column; align-items: flex-start; gap: 24px; }
-  .site-footer { font-size: 8px; gap: 12px; }
-  .site-footer > span:nth-child(2) { display: none; }
 }
 
 .ziova-logo-entering {
@@ -160,6 +113,8 @@ body {
 .ziova-logo-settled {
   transform: translate3d(calc(var(--dock-x) - 50vw), calc(var(--dock-y) - 50dvh), 0) scale(0.75);
 }
+
+.ziova-logo-docking { opacity: 0; }
 
 .ziova-logo-settled {
   pointer-events: auto;

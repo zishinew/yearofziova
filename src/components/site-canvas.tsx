@@ -1,13 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PixelLiquidBg } from "@/components/ui/pixel-liquid-bg";
-import { ProducerPortfolio } from "@/components/producer-portfolio";
+import { BeatCatalog } from "@/components/beat-catalog";
 
 export function SiteCanvas() {
   const [canvasReady, setCanvasReady] = useState(false);
+  const [view, setView] = useState<"home" | "beats" | "loops">("home");
   const [phase, setPhase] = useState<"entering" | "center" | "docking" | "settled">("entering");
   const handleReady = useCallback(() => setCanvasReady(true), []);
   const loading = phase !== "settled";
@@ -26,9 +26,21 @@ export function SiteCanvas() {
       <main
         aria-busy={loading}
         inert={loading}
-        className="portfolio-main"
+        className={view === "home" ? "vault-landing" : "vault-content"}
       >
-        <ProducerPortfolio />
+        {view === "home" ? (
+          <div className="vault-choices">
+            <button type="button" onClick={() => setView("beats")}>Beat Vault</button>
+            <button type="button" onClick={() => setView("loops")}>Loop Kit</button>
+          </div>
+        ) : (
+          <>
+            <button type="button" className="vault-back" onClick={() => setView("home")}>
+              <span aria-hidden="true">←</span> Back
+            </button>
+            <BeatCatalog key={view} kind={view} />
+          </>
+        )}
       </main>
       {loading && (
         <div
@@ -39,14 +51,8 @@ export function SiteCanvas() {
           <span className="sr-only">Loading page</span>
         </div>
       )}
-      <header className={`site-header ${loading ? "site-header-loading" : ""}`} aria-label="Site header">
-        <nav className="header-nav header-nav-left" aria-label="Main navigation" inert={loading}>
-          <a href="#beats">Beats</a><a href="#loops">Loops</a>
-        </nav>
-        <Link
-          href="/"
-          aria-label="Ziova home"
-          tabIndex={loading ? -1 : 0}
+      {loading && (
+        <div
           className={`ziova-logo ziova-logo-${phase}`}
           onAnimationEnd={() => {
             if (phase === "entering") setPhase("center");
@@ -65,11 +71,8 @@ export function SiteCanvas() {
             preload
             className="h-full w-full object-contain"
           />
-        </Link>
-        <nav className="header-nav header-nav-right" aria-label="Contact navigation" inert={loading}>
-          <a className="header-about" href="#about">About</a><a href="#contact">Let’s work <span aria-hidden="true">↗</span></a>
-        </nav>
-      </header>
+        </div>
+      )}
     </div>
   );
 }

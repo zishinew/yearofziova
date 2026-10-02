@@ -1,6 +1,6 @@
 # Year of Ziova
 
-Ziova's beat store and producer portfolio, built with Next.js App Router, React, TypeScript, and Tailwind CSS v4.
+Ziova's minimalist beat store, built with Next.js App Router, React, TypeScript, and Tailwind CSS v4. The landing page contains only Beat Vault and Loop Kit; each opens its own catalog, with a Back button to return.
 
 ## Development
 

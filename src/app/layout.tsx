@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Ziova — Beats & Original Production",
-  description: "Beats and original production by ziova. Explore the sounds, discover the producer, and connect with @yearofziova.",
+  description: "Explore the Beat Vault and Loop Kit by ziova. Beats are $24.99 CAD. DM @yearofziova on Instagram for inquiries.",
 };
 
 export default function RootLayout({
