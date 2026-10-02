@@ -1014,7 +1014,7 @@ export function PixelLiquidBg({
     <div
       ref={mountRef}
       className={[
-        "relative h-full w-full overflow-hidden bg-white dark:bg-black",
+        "relative h-full w-full overflow-hidden bg-white",
         className,
       ].filter(Boolean).join(" ")}
       {...props}
@@ -1027,4 +1027,3 @@ export function PixelLiquidBg({
 }
 
 export default PixelLiquidBg;
-
