@@ -42,7 +42,7 @@ body {
 
 .ziova-logo-docking,
 .ziova-logo-settled {
-  transform: translate3d(calc(var(--dock-x) - 50vw), calc(var(--dock-y) - 50dvh), 0) scale(0.25);
+  transform: translate3d(calc(var(--dock-x) - 50vw), calc(var(--dock-y) - 50dvh), 0) scale(0.5);
 }
 
 .ziova-logo-settled {
