@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PixelLiquidBg } from "@/components/ui/pixel-liquid-bg";
 import { SoundPlaylist } from "@/components/sound-playlist";
@@ -46,6 +47,7 @@ export function SiteCanvas() {
         </div>
       )}
       <header className={`vault-header ${loading ? "vault-header-loading" : ""}`} aria-label="Site header">
+        {!loading && <Link href="/account" className="header-account">Account</Link>}
         {view !== "home" && !loading && (
           <button type="button" className="vault-back" onClick={() => setView("home")}>
             <span aria-hidden="true">←</span> Back

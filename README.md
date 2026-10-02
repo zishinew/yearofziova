@@ -21,10 +21,41 @@ Every beat is $24.99 CAD, shown inside its expanded details. Loop pricing is han
 
 The catalogs show a coming-soon state until tracks are added. No demo tracks or checkout are presented as real inventory.
 
+## Customer accounts and redownloads
+
+The header Account link opens email/password sign-in and signup. Customers use My Downloads to redownload purchased beats without looking up an order email. Signup may require a one-time email confirmation. Password recovery is available at `/login/reset`.
+
+### Backend setup
+
+1. Create a dedicated Supabase project for Ziova.
+2. Copy `.env.example` to `.env.local` and set the project URL and publishable key. Set `SITE_URL` to the deployed site origin (or `http://localhost:3000` locally). Never put a Supabase secret/service-role key in a `NEXT_PUBLIC_` variable.
+3. Apply `supabase/migrations/20261002224637_customer_downloads.sql` in the project SQL editor, or link the Supabase CLI and push the migration.
+4. In Supabase Auth URL configuration, set the site URL and allow the local and deployed `/auth/callback` URLs, including `/auth/callback?next=/account` and `/auth/callback?next=/account/password`. Keep email confirmation enabled. Configure production SMTP for signup and recovery delivery; default Supabase email delivery is restricted.
+5. Upload full paid deliverables to the **private** `purchased-beats` Storage bucket. Do not put full deliverables in `public/`; that folder is publicly accessible. Public preview audio can stay there.
+6. Register each deliverable in `download_products` with its catalog ID, title, BPM, private Storage path, and download filename.
+7. After verifying payment, add a `purchases` record for the customer's Supabase Auth user ID and product ID. Set `source` and `order_reference` to your payment/order reference. For existing Instagram orders, verify the purchase before assigning it to the customer's confirmed account. Mark refunds `refunded` to remove future download access.
+
+Example for the owner to run in the Supabase SQL editor after uploading a real file and verifying a real order:
+
+```sql
+insert into public.download_products (id, title, bpm, storage_path, download_name)
+values ('YOUR_CATALOG_ID', 'YOUR_BEAT_TITLE', 140, 'YOUR_PRIVATE_FILE_PATH', 'beat.wav');
+
+insert into public.purchases (user_id, product_id, source, order_reference)
+values ('CONFIRMED_CUSTOMER_AUTH_UUID', 'YOUR_CATALOG_ID', 'instagram', 'YOUR_VERIFIED_ORDER_REFERENCE');
+```
+
+Purchase grants must be created by the owner or a trusted payment webhook, never by the browser or a checkout success URL. There is no checkout/payment webhook yet because a payment provider has not been configured. The library reads verified grants; login alone does not unlock anything.
+
+The app uses cookie sessions, server-verified identity, row-level security, and 60-second signed download links. Customers cannot grant themselves purchases, read another customer's purchases, upload files, or download unowned/refunded deliverables. An already-issued signed link remains valid until it expires.
+
+Without backend credentials, account submission is disabled and displays a coming-soon state. Do not advertise live accounts until the backend is configured and signup, login, and a real purchase download have been tested.
+
 ## Checks
 
 ```sh
 npm run lint
 npm run typecheck
 npm run build
+npm test
 ```
