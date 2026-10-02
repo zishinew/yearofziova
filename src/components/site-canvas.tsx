@@ -1,20 +1,21 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PixelLiquidBg } from "@/components/ui/pixel-liquid-bg";
 
 export function SiteCanvas() {
   const [canvasReady, setCanvasReady] = useState(false);
-  const [minimumElapsed, setMinimumElapsed] = useState(false);
+  const [phase, setPhase] = useState<"entering" | "center" | "docking" | "settled">("entering");
   const handleReady = useCallback(() => setCanvasReady(true), []);
-  const loading = !canvasReady || !minimumElapsed;
+  const loading = phase !== "settled";
 
   useEffect(() => {
-    // Keep fast loads from flashing the icon for only a single frame.
-    const timer = window.setTimeout(() => setMinimumElapsed(true), 600);
+    if (!canvasReady || phase !== "center") return;
+    const timer = window.setTimeout(() => setPhase("docking"), 250);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [canvasReady, phase]);
 
   return (
     <>
@@ -29,18 +30,36 @@ export function SiteCanvas() {
         <div
           role="status"
           aria-label="Loading page"
-          className="fixed inset-0 z-50 grid place-items-center bg-white"
+          className={`loader-screen ${phase === "docking" ? "loader-screen-leaving" : ""}`}
+        >
+          <span className="sr-only">Loading page</span>
+        </div>
+      )}
+      <header className="pointer-events-none fixed inset-x-0 top-0 z-60 h-24" aria-label="Site header">
+        <Link
+          href="/"
+          aria-label="Ziova home"
+          tabIndex={loading ? -1 : 0}
+          className={`ziova-logo ziova-logo-${phase}`}
+          onAnimationEnd={() => {
+            if (phase === "entering") setPhase("center");
+          }}
+          onTransitionEnd={(event) => {
+            if (event.propertyName === "transform" && phase === "docking") {
+              setPhase("settled");
+            }
+          }}
         >
           <Image
-            src="/ziova.jpg"
+            src="/eye.png"
             alt=""
             width={192}
             height={192}
             preload
-            className="h-36 w-36 rounded-full object-cover motion-safe:animate-pulse sm:h-48 sm:w-48"
+            className="h-full w-full rounded-full object-cover"
           />
-        </div>
-      )}
+        </Link>
+      </header>
     </>
   );
 }

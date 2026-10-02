@@ -6,3 +6,76 @@ body {
   color: #171717;
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.loader-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: white;
+  opacity: 1;
+  transition: opacity 700ms ease;
+}
+
+.loader-screen-leaving {
+  opacity: 0;
+}
+
+.ziova-logo {
+  --dock-x: 48px;
+  --dock-y: 44px;
+  position: fixed;
+  left: 50vw;
+  top: 50dvh;
+  width: 192px;
+  height: 192px;
+  margin-left: -96px;
+  margin-top: -96px;
+  border-radius: 50%;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition: transform 900ms cubic-bezier(0.76, 0, 0.24, 1);
+  will-change: transform;
+}
+
+.ziova-logo-entering {
+  animation: ziova-slide-in 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ziova-logo-docking,
+.ziova-logo-settled {
+  transform: translate3d(calc(var(--dock-x) - 50vw), calc(var(--dock-y) - 50dvh), 0) scale(0.25);
+}
+
+.ziova-logo-settled {
+  pointer-events: auto;
+  will-change: auto;
+}
+
+@keyframes ziova-slide-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 64px, 0) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@media (min-width: 640px) {
+  .ziova-logo {
+    --dock-x: 56px;
+    --dock-y: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ziova-logo-entering {
+    animation-duration: 1ms;
+  }
+  .ziova-logo {
+    transition-duration: 1ms;
+  }
+  .loader-screen {
+    transition-duration: 1ms;
+  }
+}
