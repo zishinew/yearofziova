@@ -18,28 +18,27 @@ export function WelcomeGate({ children }: { children: ReactNode }) {
     <dialog
       ref={dialogRef}
       aria-label="Ziova says hi"
-      aria-describedby="welcome-instructions"
       onClose={() => setIsOpen(false)}
       className="welcome-dialog"
     >
       <button
         type="button"
         aria-label="Dismiss welcome and enter the site"
-        className="absolute inset-0 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-8 focus-visible:outline-pink-400"
+        className="absolute inset-0 cursor-pointer outline-none"
         onClick={() => dialogRef.current?.close()}
       />
 
       <div className="pointer-events-none absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-[max(1.5rem,env(safe-area-inset-left))] sm:bottom-8 sm:left-8">
-        <div className="pointer-events-auto relative w-52">
+        <div className="pointer-events-auto relative w-64 sm:w-80">
           <Image
             src="/ziova.jpg"
             alt="Ziova"
-            width={72}
-            height={72}
+            width={192}
+            height={192}
             preload
-            className="h-18 w-18 rounded-full object-cover shadow-[0_6px_20px_rgba(0,0,0,0.18)]"
+            className="h-36 w-36 rounded-full object-cover shadow-[0_8px_28px_rgba(0,0,0,0.18)] sm:h-48 sm:w-48"
           />
-          <div className="absolute bottom-12 left-20 h-20 w-28">
+          <div className="absolute bottom-28 left-36 h-20 w-28 sm:bottom-40 sm:left-48">
             <svg
               viewBox="0 0 112 80"
               aria-hidden="true"
@@ -58,12 +57,6 @@ export function WelcomeGate({ children }: { children: ReactNode }) {
             </span>
           </div>
         </div>
-        <p
-          id="welcome-instructions"
-          className="mt-5 font-mono text-xs tracking-wide text-neutral-400"
-        >
-          click outside to enter
-        </p>
       </div>
     </dialog>
   );
