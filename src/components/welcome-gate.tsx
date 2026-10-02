@@ -36,7 +36,7 @@ export function WelcomeGate({ children }: { children: ReactNode }) {
             width={192}
             height={192}
             preload
-            className="h-36 w-36 rounded-full object-cover shadow-[4px_4px_0_#e5e5e5,8px_8px_0_#d4d4d4,12px_12px_0_#a3a3a3] sm:h-48 sm:w-48"
+            className="h-36 w-36 rounded-full object-cover shadow-[4px_4px_0_rgba(0,0,0,0.12)] sm:h-48 sm:w-48"
           />
           <div className="absolute bottom-28 left-36 h-20 w-28 sm:bottom-40 sm:left-48">
             <svg
