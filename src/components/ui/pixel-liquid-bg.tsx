@@ -606,10 +606,10 @@ class FluidSim {
   }
 
   private _createPasses() {
-    const { fbos, cellScale, fboSize, opts, _r: r } = this;
+    const { fbos, cellScale, boundarySpace, fboSize, opts, _r: r } = this;
 
     const advUniforms: Uniforms = {
-      boundarySpace: { value: cellScale },
+      boundarySpace: { value: boundarySpace },
       px: { value: cellScale },
       fboSize: { value: fboSize },
       velocity: { value: fbos.vel_0!.texture },
@@ -670,7 +670,7 @@ class FluidSim {
       face_vert,
       viscous_frag,
       {
-        boundarySpace: { value: cellScale },
+        boundarySpace: { value: boundarySpace },
         velocity: { value: fbos.vel_1!.texture },
         velocity_new: { value: fbos.vel_v0!.texture },
         v: { value: opts.viscous },
@@ -690,7 +690,7 @@ class FluidSim {
       face_vert,
       divergence_frag,
       {
-        boundarySpace: { value: cellScale },
+        boundarySpace: { value: boundarySpace },
         velocity: { value: fbos.vel_v0!.texture },
         px: { value: cellScale },
         dt: { value: opts.dt },
@@ -703,7 +703,7 @@ class FluidSim {
       face_vert,
       poisson_frag,
       {
-        boundarySpace: { value: cellScale },
+        boundarySpace: { value: boundarySpace },
         pressure: { value: fbos.p0!.texture },
         divergence: { value: fbos.div!.texture },
         px: { value: cellScale },
@@ -717,7 +717,7 @@ class FluidSim {
       face_vert,
       pressure_frag,
       {
-        boundarySpace: { value: cellScale },
+        boundarySpace: { value: boundarySpace },
         pressure: { value: fbos.p0!.texture },
         velocity: { value: fbos.vel_v0!.texture },
         px: { value: cellScale },
@@ -738,9 +738,8 @@ class FluidSim {
     const r = this.gl.renderer;
     if (!r) return;
 
-    this.boundarySpace.copy(
-      opts.isBounce ? new THREE.Vector2() : this.cellScale,
-    );
+    if (opts.isBounce) this.boundarySpace.copy(this.cellScale);
+    else this.boundarySpace.set(0, 0);
 
     {
       const u = this.advection.pass.uniforms;
@@ -753,20 +752,12 @@ class FluidSim {
     {
       const mf = opts.mouse_force;
       const cs = opts.cursor_size;
-      const cx = this.cellScale.x;
-      const cy = this.cellScale.y;
-      const clampedX = Math.min(
-        Math.max(mouse.coords.x, -1 + cs * cx * 2 + cx * 2),
-        1 - cs * cx * 2 - cx * 2,
-      );
-      const clampedY = Math.min(
-        Math.max(mouse.coords.y, -1 + cs * cy * 2 + cy * 2),
-        1 - cs * cy * 2 - cy * 2,
-      );
       const u = (this.externalForce.mesh.material as THREE.RawShaderMaterial)
         .uniforms;
       u.force.value.set((mouse.diff.x / 2) * mf, (mouse.diff.y / 2) * mf);
-      u.center.value.set(clampedX, clampedY);
+      // Let the force brush overlap the viewport edge instead of insetting it
+      // by its radius, so fluid can reach and flow off every screen edge.
+      u.center.value.copy(mouse.coords);
       u.scale.value.set(cs, cs);
       r.setRenderTarget(fbos.vel_1);
       r.render(this.externalForce.scene, this.externalForce.camera);
