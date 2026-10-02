@@ -23,7 +23,7 @@ The catalogs show a coming-soon state until tracks are added. No demo tracks or 
 
 ## Customer accounts and redownloads
 
-The header Account link opens email/password sign-in and signup. Customers use My Downloads to redownload purchased beats without looking up an order email. Signup may require a one-time email confirmation. Password recovery is available at `/login/reset`.
+The header Account link opens email/password sign-in and signup in a card over the blurred current screen. Signup and password recovery switch inside the card. Escape, the close button, or the backdrop dismiss it and preserve the selected playlist. Direct `/login` and `/login/reset` links also show the card over the landing background. Signed-in customers continue to My Downloads to redownload purchased beats without looking up an order email. Signup may require a one-time email confirmation. The whole site uses the landing page's Courier monospace font.
 
 ### Backend setup
 

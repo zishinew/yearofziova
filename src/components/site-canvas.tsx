@@ -8,10 +8,10 @@ import { PixelLiquidBg } from "@/components/ui/pixel-liquid-bg";
 import { SoundPlaylist } from "@/components/sound-playlist";
 import { beats, loops } from "@/data/beats";
 
-export function SiteCanvas() {
+export function SiteCanvas({ skipLoader = false }: { skipLoader?: boolean }) {
   const [canvasReady, setCanvasReady] = useState(false);
   const [view, setView] = useState<"home" | "beats" | "loops">("home");
-  const [phase, setPhase] = useState<"entering" | "center" | "docking" | "settled">("entering");
+  const [phase, setPhase] = useState<"entering" | "center" | "docking" | "settled">(skipLoader ? "settled" : "entering");
   const handleReady = useCallback(() => setCanvasReady(true), []);
   const loading = phase !== "settled";
   const navigate = (next: typeof view) => startTransition(() => setView(next));
@@ -51,7 +51,7 @@ export function SiteCanvas() {
         </div>
       )}
       <header className={`vault-header ${loading ? "vault-header-loading" : ""}`} aria-label="Site header">
-        {!loading && <Link href="/account" className="header-account">Account</Link>}
+        {!loading && <Link href="/login" className="header-account" scroll={false}>Account</Link>}
         {view !== "home" && !loading && (
           <button type="button" className="vault-back" onClick={() => navigate("home")}>
             <span aria-hidden="true">←</span> Back

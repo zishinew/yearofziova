@@ -8,7 +8,7 @@ type Mode = "login" | "signup" | "reset" | "password";
 const actions = { login, signup, reset: resetPassword, password: updatePassword };
 const labels = { login: "Sign in", signup: "Create account", reset: "Reset password", password: "Set new password" };
 
-function Form({ mode, configured }: { mode: Mode; configured: boolean }) {
+function Form({ mode, configured, onReset }: { mode: Mode; configured: boolean; onReset: () => void }) {
   const [state, action, pending] = useActionState(actions[mode], {} as AuthState);
   return (
     <form action={action} className="auth-form">
@@ -22,7 +22,7 @@ function Form({ mode, configured }: { mode: Mode; configured: boolean }) {
       {state.message && <p className="auth-message" role="status">{state.message}</p>}
       {!configured && <p className="auth-message">Accounts are coming soon.</p>}
       <button className="auth-submit" type="submit" disabled={pending || !configured}>{pending ? "Please wait…" : labels[mode]}</button>
-      {mode === "login" && <Link className="auth-text-link" href="/login/reset">Forgot password?</Link>}
+      {mode === "login" && <button className="auth-text-link auth-reset" type="button" onClick={onReset}>Forgot password?</button>}
     </form>
   );
 }
@@ -31,15 +31,15 @@ export function AuthForm({ configured, mode: initialMode = "login", confirmation
   const [mode, setMode] = useState(initialMode);
   return (
     <div className="auth-card">
-      <h1>{labels[mode]}</h1>
+      <h1 id="auth-title">{labels[mode]}</h1>
       <p className="auth-intro">{mode === "reset" ? "We'll send you a link to set a new password." : mode === "password" ? "Choose a new password for your account." : "Your purchased beats. Always here."}</p>
       {confirmationError && <p className="auth-error" role="alert">That confirmation link has expired or was opened in a different browser. Try signing in, or request a password reset.</p>}
-      <Form key={mode} mode={mode} configured={configured} />
+      <Form key={mode} mode={mode} configured={configured} onReset={() => setMode("reset")} />
       {(mode === "login" || mode === "signup") ? (
         <button className="auth-switch" type="button" onClick={() => setMode(mode === "login" ? "signup" : "login")}>
           {mode === "login" ? "New here? Create an account" : "Already have an account? Sign in"}
         </button>
-      ) : <Link className="auth-text-link" href="/login">Back to sign in</Link>}
+      ) : mode === "reset" ? <button className="auth-switch" type="button" onClick={() => setMode("login")}>Back to sign in</button> : <Link className="auth-text-link" href="/login">Back to sign in</Link>}
     </div>
   );
 }
