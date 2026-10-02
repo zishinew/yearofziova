@@ -46,8 +46,18 @@ body {
 .vault-choices { display: flex; align-items: center; justify-content: center; gap: clamp(64px, 14vw, 220px); padding: 24px; }
 .vault-choices button { cursor: pointer; font-family: "Courier New", monospace; font-size: 16px; padding: 24px 12px; transition: color 180ms, transform 180ms; }
 .vault-choices button:hover { color: #e8227a; transform: translateY(-4px); }
-.vault-content { min-height: 100dvh; padding-top: 72px; }
-.vault-back { position: absolute; top: 24px; left: clamp(24px, 5vw, 96px); font-size: 12px; display: flex; gap: 12px; align-items: center; cursor: pointer; }
+.vault-content { min-height: 100dvh; padding-top: 96px; }
+.vault-header { position: fixed; inset: 0 0 auto; height: 96px; z-index: 60; pointer-events: none; background: rgba(255,255,255,0.9); border-bottom: 1px solid rgba(23,23,23,0.06); backdrop-filter: blur(12px); }
+.vault-header-loading { background: transparent; border-color: transparent; backdrop-filter: none; }
+.vault-back { position: absolute; top: 40px; left: clamp(24px, 5vw, 96px); font-size: 12px; display: flex; gap: 12px; align-items: center; cursor: pointer; pointer-events: auto; }
+.beat-vault { max-width: 880px; margin: 0 auto; padding: 56px 24px; }
+.beat-vault h1 { font-size: 28px; font-weight: 400; letter-spacing: -0.04em; margin-bottom: 36px; }
+.vault-playlist { width: 100%; border-collapse: collapse; text-align: left; }
+.vault-playlist th { font-size: 11px; font-weight: 400; color: #888; padding: 12px 16px; border-bottom: 1px solid rgba(23,23,23,0.12); }
+.vault-playlist td { font-size: 14px; padding: 20px 16px; }
+.vault-playlist th:last-child, .vault-playlist td:last-child:not([colspan]) { width: 80px; text-align: right; font-variant-numeric: tabular-nums; }
+.vault-playlist tbody tr:hover { background: rgba(255,255,255,0.65); }
+.vault-playlist .playlist-empty { font-size: 12px; color: #888; padding-block: 28px; }
 .ziova-logo { z-index: 60; }
 .section-shell { padding-inline: clamp(24px, 5vw, 96px); }
 .eyebrow { font-family: "Courier New", monospace; font-size: 10px; line-height: 1.5; letter-spacing: 0.1em; }
@@ -114,10 +124,10 @@ body {
   transform: translate3d(calc(var(--dock-x) - 50vw), calc(var(--dock-y) - 50dvh), 0) scale(0.75);
 }
 
-.ziova-logo-docking { opacity: 0; }
 
 .ziova-logo-settled {
   pointer-events: auto;
+  cursor: pointer;
   will-change: auto;
   transition: none;
 }

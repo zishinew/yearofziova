@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { PixelLiquidBg } from "@/components/ui/pixel-liquid-bg";
 import { BeatCatalog } from "@/components/beat-catalog";
+import { BeatVault } from "@/components/beat-vault";
 
 export function SiteCanvas() {
   const [canvasReady, setCanvasReady] = useState(false);
@@ -33,14 +34,7 @@ export function SiteCanvas() {
             <button type="button" onClick={() => setView("beats")}>Beat Vault</button>
             <button type="button" onClick={() => setView("loops")}>Loop Kit</button>
           </div>
-        ) : (
-          <>
-            <button type="button" className="vault-back" onClick={() => setView("home")}>
-              <span aria-hidden="true">←</span> Back
-            </button>
-            <BeatCatalog key={view} kind={view} />
-          </>
-        )}
+        ) : view === "beats" ? <BeatVault /> : <BeatCatalog kind="loops" />}
       </main>
       {loading && (
         <div
@@ -51,8 +45,17 @@ export function SiteCanvas() {
           <span className="sr-only">Loading page</span>
         </div>
       )}
-      {loading && (
-        <div
+      <header className={`vault-header ${loading ? "vault-header-loading" : ""}`} aria-label="Site header">
+        {view !== "home" && !loading && (
+          <button type="button" className="vault-back" onClick={() => setView("home")}>
+            <span aria-hidden="true">←</span> Back
+          </button>
+        )}
+        <button
+          type="button"
+          aria-label="Ziova home"
+          disabled={loading}
+          onClick={() => setView("home")}
           className={`ziova-logo ziova-logo-${phase}`}
           onAnimationEnd={() => {
             if (phase === "entering") setPhase("center");
@@ -71,8 +74,8 @@ export function SiteCanvas() {
             preload
             className="h-full w-full object-contain"
           />
-        </div>
-      )}
+        </button>
+      </header>
     </div>
   );
 }
