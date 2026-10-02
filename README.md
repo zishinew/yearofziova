@@ -27,9 +27,9 @@ The header Account link opens email/password sign-in and signup. Customers use M
 
 ### Backend setup
 
-1. Create a dedicated Supabase project for Ziova.
+1. The dedicated backend is the **beat store** project in the **yearofziova** organization: https://supabase.com/dashboard/project/nysxznkabusqmthihlpt. Its purchase schema and private bucket are already applied.
 2. Copy `.env.example` to `.env.local` and set the project URL and publishable key. Set `SITE_URL` to the deployed site origin (or `http://localhost:3000` locally). Never put a Supabase secret/service-role key in a `NEXT_PUBLIC_` variable.
-3. Apply `supabase/migrations/20261002224637_customer_downloads.sql` in the project SQL editor, or link the Supabase CLI and push the migration.
+3. For a fresh replacement project, apply both files in `supabase/migrations/` in timestamp order, or link the Supabase CLI and push the migrations. The second migration restricts a default internal Supabase function when present.
 4. In Supabase Auth URL configuration, set the site URL and allow the local and deployed `/auth/callback` URLs, including `/auth/callback?next=/account` and `/auth/callback?next=/account/password`. Keep email confirmation enabled. Configure production SMTP for signup and recovery delivery; default Supabase email delivery is restricted.
 5. Upload full paid deliverables to the **private** `purchased-beats` Storage bucket. Do not put full deliverables in `public/`; that folder is publicly accessible. Public preview audio can stay there.
 6. Register each deliverable in `download_products` with its catalog ID, title, BPM, private Storage path, and download filename.
