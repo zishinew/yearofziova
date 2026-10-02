@@ -51,12 +51,12 @@ export function SiteCanvas() {
           }}
         >
           <Image
-            src="/eye.png"
+            src="/eye transparent.png"
             alt=""
             width={192}
             height={192}
             preload
-            className="h-full w-full rounded-full object-cover"
+            className="h-full w-full object-contain"
           />
         </Link>
       </header>
