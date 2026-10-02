@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
+import { PageTransition } from "@/components/page-transition";
 import { PixelLiquidBg } from "@/components/ui/pixel-liquid-bg";
 import { SoundPlaylist } from "@/components/sound-playlist";
 import { beats, loops } from "@/data/beats";
@@ -13,6 +14,7 @@ export function SiteCanvas() {
   const [phase, setPhase] = useState<"entering" | "center" | "docking" | "settled">("entering");
   const handleReady = useCallback(() => setCanvasReady(true), []);
   const loading = phase !== "settled";
+  const navigate = (next: typeof view) => startTransition(() => setView(next));
 
   useEffect(() => {
     if (!canvasReady || phase !== "center") return;
@@ -25,18 +27,20 @@ export function SiteCanvas() {
       <div className="site-fluid" aria-hidden="true">
         <PixelLiquidBg pixelSize={8} onReady={handleReady} />
       </div>
-      <main
-        aria-busy={loading}
-        inert={loading}
-        className={view === "home" ? "vault-landing" : "vault-content"}
-      >
-        {view === "home" ? (
-          <div className="vault-choices">
-            <button type="button" onClick={() => setView("beats")}>Beat Vault</button>
-            <button type="button" onClick={() => setView("loops")}>Loop Kit</button>
-          </div>
-        ) : <SoundPlaylist key={view} kind={view} tracks={view === "beats" ? beats : loops} />}
-      </main>
+      <PageTransition view={view}>
+        <main
+          aria-busy={loading}
+          inert={loading}
+          className={view === "home" ? "vault-landing" : "vault-content"}
+        >
+          {view === "home" ? (
+            <div className="vault-choices">
+              <button type="button" onClick={() => navigate("beats")}>Beat Vault</button>
+              <button type="button" onClick={() => navigate("loops")}>Loop Kit</button>
+            </div>
+          ) : <SoundPlaylist key={view} kind={view} tracks={view === "beats" ? beats : loops} />}
+        </main>
+      </PageTransition>
       {loading && (
         <div
           role="status"
@@ -49,7 +53,7 @@ export function SiteCanvas() {
       <header className={`vault-header ${loading ? "vault-header-loading" : ""}`} aria-label="Site header">
         {!loading && <Link href="/account" className="header-account">Account</Link>}
         {view !== "home" && !loading && (
-          <button type="button" className="vault-back" onClick={() => setView("home")}>
+          <button type="button" className="vault-back" onClick={() => navigate("home")}>
             <span aria-hidden="true">←</span> Back
           </button>
         )}
@@ -57,7 +61,7 @@ export function SiteCanvas() {
           type="button"
           aria-label="Ziova home"
           disabled={loading}
-          onClick={() => setView("home")}
+          onClick={() => navigate("home")}
           className={`ziova-logo ziova-logo-${phase}`}
           onAnimationEnd={() => {
             if (phase === "entering") setPhase("center");
