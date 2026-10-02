@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SiteSession } from "@/components/site-session";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode; auth?: React.ReactNode }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body>{children}{auth}</body>
+      <body><SiteSession>{children}{auth}</SiteSession></body>
     </html>
   );
 }

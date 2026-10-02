@@ -4,15 +4,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { startTransition, useCallback, useEffect, useState } from "react";
 import { PageTransition } from "@/components/page-transition";
+import { useSiteSession } from "@/components/site-session";
 import { PixelLiquidBg } from "@/components/ui/pixel-liquid-bg";
 import { SoundPlaylist } from "@/components/sound-playlist";
 import { beats, loops } from "@/data/beats";
 
 export function SiteCanvas({ skipLoader = false }: { skipLoader?: boolean }) {
+  const { entered, enter } = useSiteSession();
   const [canvasReady, setCanvasReady] = useState(false);
   const [view, setView] = useState<"home" | "beats" | "loops">("home");
-  const [phase, setPhase] = useState<"entering" | "center" | "docking" | "settled">(skipLoader ? "settled" : "entering");
-  const handleReady = useCallback(() => setCanvasReady(true), []);
+  const [phase, setPhase] = useState<"entering" | "center" | "docking" | "settled">(skipLoader || entered ? "settled" : "entering");
+  const handleReady = useCallback(() => {
+    setCanvasReady(true);
+    enter();
+  }, [enter]);
   const loading = phase !== "settled";
   const navigate = (next: typeof view) => startTransition(() => setView(next));
 
