@@ -840,6 +840,8 @@ class FluidSim {
 }
 
 export interface PixelLiquidBgProps extends React.ComponentProps<"div"> {
+  /** Called after the first fluid frame has rendered. */
+  onReady?: () => void;
   darkPalette?: string[];
   lightPalette?: string[];
   /** pixelation grid size in px */
@@ -863,6 +865,7 @@ export function PixelLiquidBg({
   autoDemo = true,
   children,
   className,
+  onReady,
   ...props
 }: PixelLiquidBgProps) {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -971,6 +974,7 @@ export function PixelLiquidBg({
       }
     };
     loop();
+    onReady?.();
 
     const onVisibility = () => {
       if (document.hidden) {
@@ -1008,6 +1012,7 @@ export function PixelLiquidBg({
     mouseForce,
     cursorSize,
     autoDemo,
+    onReady,
   ]);
 
   return (
