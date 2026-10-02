@@ -21,7 +21,7 @@ body {
 }
 
 .ziova-logo {
-  --dock-x: 48px;
+  --dock-x: 50vw;
   --dock-y: 44px;
   position: fixed;
   left: 50vw;
@@ -63,7 +63,6 @@ body {
 
 @media (min-width: 640px) {
   .ziova-logo {
-    --dock-x: 56px;
     --dock-y: 48px;
   }
 }
