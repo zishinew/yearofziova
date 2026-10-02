@@ -28,9 +28,15 @@ The header Account link opens email/password sign-in and signup. Customers use M
 ### Backend setup
 
 1. The dedicated backend is the **beat store** project in the **yearofziova** organization: https://supabase.com/dashboard/project/nysxznkabusqmthihlpt. Its purchase schema and private bucket are already applied.
-2. Copy `.env.example` to `.env.local` and set the project URL and publishable key. Set `SITE_URL` to the deployed site origin (or `http://localhost:3000` locally). Never put a Supabase secret/service-role key in a `NEXT_PUBLIC_` variable.
+2. Copy `.env.example` to `.env.local`. For local development, override `SITE_URL=http://localhost:3000`. In your hosting provider, set all three environment variables from `.env.example`, with `SITE_URL=https://yearofziova.com`, and redeploy. Never put a Supabase secret/service-role key in a `NEXT_PUBLIC_` variable.
 3. For a fresh replacement project, apply both files in `supabase/migrations/` in timestamp order, or link the Supabase CLI and push the migrations. The second migration restricts a default internal Supabase function when present.
-4. In Supabase Auth URL configuration, set the site URL and allow the local and deployed `/auth/callback` URLs, including `/auth/callback?next=/account` and `/auth/callback?next=/account/password`. Keep email confirmation enabled. Configure production SMTP for signup and recovery delivery; default Supabase email delivery is restricted.
+4. In [Supabase Auth URL configuration](https://supabase.com/dashboard/project/nysxznkabusqmthihlpt/auth/url-configuration), set **Site URL** to `https://yearofziova.com`. Add these **Redirect URLs**:
+   - `https://yearofziova.com/auth/callback?next=/account`
+   - `https://yearofziova.com/auth/callback?next=/account/password`
+   - `http://localhost:3000/auth/callback?next=/account`
+   - `http://localhost:3000/auth/callback?next=/account/password`
+
+   Keep email confirmation enabled. Configure production SMTP for signup and recovery delivery; default Supabase email delivery is restricted. The dashboard URL settings and SMTP require separate configuration; updating this repository does not apply them remotely.
 5. Upload full paid deliverables to the **private** `purchased-beats` Storage bucket. Do not put full deliverables in `public/`; that folder is publicly accessible. Public preview audio can stay there.
 6. Register each deliverable in `download_products` with its catalog ID, title, BPM, private Storage path, and download filename.
 7. After verifying payment, add a `purchases` record for the customer's Supabase Auth user ID and product ID. Set `source` and `order_reference` to your payment/order reference. For existing Instagram orders, verify the purchase before assigning it to the customer's confirmed account. Mark refunds `refunded` to remove future download access.

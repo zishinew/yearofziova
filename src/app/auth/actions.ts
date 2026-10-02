@@ -16,7 +16,8 @@ function validEmail(email: string) {
 }
 
 function callback(next = "/account") {
-  const url = new URL("/auth/callback", process.env.SITE_URL || "http://localhost:3000");
+  const origin = process.env.SITE_URL || (process.env.NODE_ENV === "production" ? "https://yearofziova.com" : "http://localhost:3000");
+  const url = new URL("/auth/callback", origin);
   url.searchParams.set("next", next);
   return url.toString();
 }
