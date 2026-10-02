@@ -29,17 +29,17 @@ export function WelcomeGate({ children }: { children: ReactNode }) {
         onClick={() => dialogRef.current?.close()}
       />
 
-      <div className="pointer-events-none relative flex flex-col items-center gap-7 px-6">
-        <div className="pointer-events-auto flex items-center gap-5">
+      <div className="pointer-events-none absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-[max(1.5rem,env(safe-area-inset-left))] sm:bottom-8 sm:left-8">
+        <div className="pointer-events-auto relative w-52">
           <Image
             src="/ziova.jpg"
             alt="Ziova"
             width={72}
             height={72}
             preload
-            className="h-18 w-18 rounded-full object-cover"
+            className="h-18 w-18 rounded-full object-cover shadow-[0_6px_20px_rgba(0,0,0,0.18)]"
           />
-          <div className="relative h-20 w-28">
+          <div className="absolute bottom-12 left-20 h-20 w-28">
             <svg
               viewBox="0 0 112 80"
               aria-hidden="true"
@@ -60,7 +60,7 @@ export function WelcomeGate({ children }: { children: ReactNode }) {
         </div>
         <p
           id="welcome-instructions"
-          className="text-center font-mono text-xs tracking-wide text-neutral-400"
+          className="mt-5 font-mono text-xs tracking-wide text-neutral-400"
         >
           click outside to enter
         </p>
