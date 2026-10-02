@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PixelLiquidBg } from "@/components/ui/pixel-liquid-bg";
+import { ProducerPortfolio } from "@/components/producer-portfolio";
 
 export function SiteCanvas() {
   const [canvasReady, setCanvasReady] = useState(false);
@@ -18,13 +19,16 @@ export function SiteCanvas() {
   }, [canvasReady, phase]);
 
   return (
-    <>
+    <div id="top">
+      <div className="site-fluid" aria-hidden="true">
+        <PixelLiquidBg pixelSize={8} onReady={handleReady} />
+      </div>
       <main
         aria-busy={loading}
         inert={loading}
-        className="fixed inset-0 overflow-hidden bg-white"
+        className="portfolio-main"
       >
-        <PixelLiquidBg pixelSize={8} onReady={handleReady} />
+        <ProducerPortfolio />
       </main>
       {loading && (
         <div
@@ -35,7 +39,10 @@ export function SiteCanvas() {
           <span className="sr-only">Loading page</span>
         </div>
       )}
-      <header className="pointer-events-none fixed inset-x-0 top-0 z-60 h-24" aria-label="Site header">
+      <header className={`site-header ${loading ? "site-header-loading" : ""}`} aria-label="Site header">
+        <nav className="header-nav header-nav-left" aria-label="Main navigation" inert={loading}>
+          <a href="#beats">Beats</a><a href="#loops">Loops</a>
+        </nav>
         <Link
           href="/"
           aria-label="Ziova home"
@@ -59,7 +66,10 @@ export function SiteCanvas() {
             className="h-full w-full object-contain"
           />
         </Link>
+        <nav className="header-nav header-nav-right" aria-label="Contact navigation" inert={loading}>
+          <a className="header-about" href="#about">About</a><a href="#contact">Let’s work <span aria-hidden="true">↗</span></a>
+        </nav>
       </header>
-    </>
+    </div>
   );
 }
