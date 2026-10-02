@@ -13,6 +13,10 @@ Open http://localhost:3000.
 
 ## Beats and loops
 
+Sign in with your admin account, open **Account → Admin dashboard** (or `/admin`), and choose **Beats** or **Loops**. Upload a public preview and optional cover art, enter the title/BPM/details, and save. Duration is detected from the preview when possible, or can be entered in seconds. Published tracks appear in the corresponding playlist immediately; uncheck Publish to save a draft. Existing tracks can be edited, hidden, or published from the dashboard.
+
+Previews accept MP3/WAV/OGG/M4A/FLAC up to 50 MB; covers accept JPG/PNG/WEBP up to 5 MB. The optional purchased download accepts audio or ZIP up to 50 MB and stays in private storage. These limits match the configured buckets. Full paid audio should go in Purchased download, with a shortened or tagged sample in Preview audio. Replacing files uses a new path and leaves older referenced versions intact; failed uploads are cleaned up only when no catalog or download record references them.
+
 Add audio previews under `public/audio/` and covers under `public/covers/`, then add entries to the `beats` or `loops` arrays in `src/data/beats.ts`. Each entry needs a unique `id`, `title`, and `bpm`. Optional fields are `coverArt` (image path), `durationSeconds` (number of seconds), `audioUrl`, `genre`, `key`, `description`, `moods` (string array), `tags` (string array), and `notes` (string array).
 
 Rows expand on mouse hover. Clicking, tapping, or pressing Enter/Space pins the details open; repeat to close. Details show the supplied description, moods, tags, notes, genre/key, and audio player. Only one audio preview plays at a time. Missing artwork uses a neutral placeholder and missing durations display a dash.
@@ -29,7 +33,7 @@ The header Account link opens email/password sign-in and signup in a card over t
 
 1. The dedicated backend is the **beat store** project in the **yearofziova** organization: https://supabase.com/dashboard/project/nysxznkabusqmthihlpt. Its purchase schema and private bucket are already applied.
 2. Copy `.env.example` to `.env.local`. For local development, override `SITE_URL=http://localhost:3000`. In your hosting provider, set all three environment variables from `.env.example`, with `SITE_URL=https://yearofziova.com`, and redeploy. Never put a Supabase secret/service-role key in a `NEXT_PUBLIC_` variable.
-3. For a fresh replacement project, apply both files in `supabase/migrations/` in timestamp order, or link the Supabase CLI and push the migrations. The second migration restricts a default internal Supabase function when present.
+3. For a fresh replacement project, apply all files in `supabase/migrations/` in timestamp order, or link the Supabase CLI and push the migrations. The migrations configure customer downloads, restrict a default internal function, and add the admin catalog and upload policies.
 4. In [Supabase Auth URL configuration](https://supabase.com/dashboard/project/nysxznkabusqmthihlpt/auth/url-configuration), set **Site URL** to `https://yearofziova.com`. Add these **Redirect URLs**:
    - `https://yearofziova.com/auth/callback?next=/account`
    - `https://yearofziova.com/auth/callback?next=/account/password`
@@ -40,6 +44,14 @@ The header Account link opens email/password sign-in and signup in a card over t
 5. Upload full paid deliverables to the **private** `purchased-beats` Storage bucket. Do not put full deliverables in `public/`; that folder is publicly accessible. Public preview audio can stay there.
 6. Register each deliverable in `download_products` with its catalog ID, title, BPM, private Storage path, and download filename.
 7. After verifying payment, add a `purchases` record for the customer's Supabase Auth user ID and product ID. Set `source` and `order_reference` to your payment/order reference. For existing Instagram orders, verify the purchase before assigning it to the customer's confirmed account. Mark refunds `refunded` to remove future download access.
+
+The dashboard registers private uploads in `download_products` automatically using the catalog track UUID as the product ID. Customer purchase grants still require verified payment; uploading/publishing a track does not create purchase access.
+
+### Admin permissions
+
+Admin membership lives in `admin_users`, linked to a confirmed Auth user ID. Customers can read only their own membership and cannot create or edit roles. The server checks verified identity and membership for every dashboard action, and Storage/RLS enforce the same membership for direct API access. Grant or revoke roles only through the owner-controlled Supabase SQL editor. No extra deployment environment variables or service-role key are required.
+
+The latest security check has no catalog/RLS warnings. Supabase separately flags [disabled leaked-password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection); this Auth setting is managed in Supabase, not by these migrations.
 
 Example for the owner to run in the Supabase SQL editor after uploading a real file and verifying a real order:
 

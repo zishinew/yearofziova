@@ -7,9 +7,11 @@ import { PageTransition } from "@/components/page-transition";
 import { useSiteSession } from "@/components/site-session";
 import { PixelLiquidBg } from "@/components/ui/pixel-liquid-bg";
 import { SoundPlaylist } from "@/components/sound-playlist";
-import { beats, loops } from "@/data/beats";
+import { beats, loops, type Beat } from "@/data/beats";
 
-export function SiteCanvas({ skipLoader = false }: { skipLoader?: boolean }) {
+export function SiteCanvas({ skipLoader = false, beatTracks = beats, loopTracks = loops, catalogError = false }: {
+  skipLoader?: boolean; beatTracks?: Beat[]; loopTracks?: Beat[]; catalogError?: boolean;
+}) {
   const { entered, enter } = useSiteSession();
   const [canvasReady, setCanvasReady] = useState(false);
   const [view, setView] = useState<"home" | "beats" | "loops">("home");
@@ -43,7 +45,7 @@ export function SiteCanvas({ skipLoader = false }: { skipLoader?: boolean }) {
               <button type="button" onClick={() => navigate("beats")}>Beat Vault</button>
               <button type="button" onClick={() => navigate("loops")}>Loop Kit</button>
             </div>
-          ) : <SoundPlaylist key={view} kind={view} tracks={view === "beats" ? beats : loops} />}
+          ) : <SoundPlaylist key={view} kind={view} tracks={view === "beats" ? beatTracks : loopTracks} loadError={catalogError} />}
         </main>
       </PageTransition>
       {loading && (

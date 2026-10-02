@@ -16,10 +16,12 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
     .select("id, purchased_at, download_products!inner(id, title, bpm)")
     .eq("user_id", user.id).eq("status", "paid").order("purchased_at", { ascending: false });
   const params = await searchParams;
+  const { data: admin } = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
 
   return (
     <AccountShell>
       <section className="downloads-library">
+        {admin && <Link href="/admin" className="admin-entry">Admin dashboard ↗</Link>}
         <div className="downloads-heading"><div><h1>My Downloads</h1><p>{user.email}</p></div>
           <form action={logout}><button className="auth-text-link" type="submit">Sign out</button></form>
         </div>

@@ -9,7 +9,7 @@ function duration(seconds?: number) {
   return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 }
 
-export function SoundPlaylist({ kind, tracks }: { kind: "beats" | "loops"; tracks: Beat[] }) {
+export function SoundPlaylist({ kind, tracks, loadError = false }: { kind: "beats" | "loops"; tracks: Beat[]; loadError?: boolean }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const title = kind === "beats" ? "Beat Vault" : "Loop Kit";
@@ -69,7 +69,8 @@ export function SoundPlaylist({ kind, tracks }: { kind: "beats" | "loops"; track
             </div>
           </details>
         ))}
-        {tracks.length === 0 && <p className="playlist-empty">{kind === "beats" ? "Beats" : "Loops"} coming soon.</p>}
+        {loadError && <p className="playlist-empty" role="status">Couldn’t load the catalog. Please refresh and try again.</p>}
+        {!loadError && tracks.length === 0 && <p className="playlist-empty">{kind === "beats" ? "Beats" : "Loops"} coming soon.</p>}
       </div>
     </section>
   );
