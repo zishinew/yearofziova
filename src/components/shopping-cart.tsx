@@ -1,11 +1,13 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { BEAT_PRICE_CAD, type Beat } from "@/data/beats";
+import { type Beat } from "@/data/beats";
+import { LEASE_PRICES, type CheckoutItem } from "@/lib/payments";
+import { useRouter } from "next/navigation";
 
 type Lease = "mp3" | "wav";
 type Item = Pick<Beat, "id" | "title"> & { lease: Lease };
-const prices: Record<Lease, number> = { mp3: Math.round(BEAT_PRICE_CAD * 100), wav: 3499 };
+const prices = LEASE_PRICES;
 const leaseName = (lease: Lease) => `${lease.toUpperCase()} lease`;
 const key = "ziova-cart-v1";
 const changed = "ziova-cart-changed";
@@ -17,7 +19,18 @@ function subscribe(callback: () => void) {
 const CartContext = createContext<{ items: Item[]; add: (beat: Beat) => void; remove: (id: string) => void; open: () => void }>({ items: [], add: () => {}, remove: () => {}, open: () => {} });
 const money = (cents: number) => `$${(cents / 100).toFixed(2)} CAD`;
 
+export function clearPurchasedCartItems(purchased: CheckoutItem[]) {
+  try {
+    const raw = JSON.parse(snapshot());
+    if (!Array.isArray(raw)) return;
+    localStorage.setItem(key, JSON.stringify(raw.filter(item => !purchased.some(p => p.id === item.id && p.lease === (item.lease || "mp3")))));
+    window.dispatchEvent(new Event(changed));
+  } catch {}
+}
+
 export function ShoppingCart({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const [checkingOut, setCheckingOut] = useState(false);
   const raw = useSyncExternalStore(subscribe, snapshot, () => "[]");
   const items = useMemo<Item[]>(() => {
     try {
@@ -51,6 +64,17 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
     element?.showModal();
     return () => { element?.close(); document.body.style.overflow = overflow; };
   }, [opened]);
+  async function checkout() {
+    setCheckingOut(true); setError("");
+    try {
+      const response = await fetch("/api/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({items:items.map(({id,lease})=>({id,lease}))}) });
+      const result = await response.json();
+      if (response.status === 401) { setOpened(false); router.push("/login", {scroll:false}); return; }
+      if (!response.ok || !result.url) throw new Error(result.error || "Couldn't start checkout.");
+      window.location.assign(result.url);
+    } catch (problem) { setError(problem instanceof Error ? problem.message : "Couldn't start checkout."); }
+    finally { setCheckingOut(false); }
+  }
   const existing = selection ? items.some(item => item.id === selection.id) : false;
   return <CartContext.Provider value={{ items, add: choose, remove: id => write(items.filter(item => item.id !== id)), open: () => { setSelection(null); setError(""); setOpened(true); } }}>
     {children}
@@ -69,8 +93,8 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
         <a className="lease-exclusive" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer"><span>Exclusive lease</span><span>DM @yearofziova ↗</span></a>
       </> : items.length ? <><ul className="cart-items">{items.map(item => <li key={item.id}><div><p>{item.title}</p><span>{leaseName(item.lease)} · {money(prices[item.lease])}</span><button type="button" className="cart-change-lease" aria-label={`Change lease for ${item.title}`} onClick={() => choose(item)}>Change lease</button></div><button type="button" aria-label={`Remove ${item.title} from cart`} onClick={() => write(items.filter(other => other.id !== item.id))}>Remove</button></li>)}</ul>
         <div className="cart-total"><span>Total</span><span>{money(items.reduce((total, item) => total + prices[item.lease], 0))}</span></div>
-        <p className="cart-note">DM @yearofziova on Instagram to purchase the beats in your cart.</p>
-        <a className="cart-inquiry" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer">Inquire on Instagram ↗</a>
+        <button className="lease-confirm" type="button" disabled={checkingOut} onClick={checkout}>{checkingOut ? "Opening checkout…" : "Checkout ↗"}</button>
+        <p className="cart-note">Purchases are saved to your account.</p>
       </> : <p className="cart-note">Your cart is empty.</p>}
       {error && <p className="auth-error" role="alert">{error}</p>}
     </dialog>}

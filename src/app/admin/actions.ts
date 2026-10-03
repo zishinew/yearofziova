@@ -9,7 +9,7 @@ function validList(value: unknown, max: number) {
   return Array.isArray(value) && value.length <= 30 && value.every(v => validText(v, max));
 }
 
-export async function saveTrack(track: AdminTrack, downloadPath?: string, downloadName?: string): Promise<{ error?: string }> {
+export async function saveTrack(track: AdminTrack, downloadPath?: string, downloadName?: string, leases: { lease: "mp3" | "wav"; path: string; name: string }[] = []): Promise<{ error?: string }> {
   const session = await getAdminSession();
   if (!session) return { error: "Admin access required. Please sign in again." };
   if (!track || !UUID.test(track.id) || !["beats", "loops"].includes(track.kind)
@@ -19,10 +19,12 @@ export async function saveTrack(track: AdminTrack, downloadPath?: string, downlo
     || !validText(track.genre, 120) || !validText(track.musical_key, 40) || !validText(track.description, 2000)
     || !validList(track.moods, 80) || !validList(track.tags, 80) || !validList(track.notes, 500)
     || typeof track.published !== "boolean") return { error: "Check your track details and try again." };
+  if (!Array.isArray(leases) || leases.length > 2 || new Set(leases.map(l=>l.lease)).size !== leases.length || leases.some(l=> !["mp3","wav"].includes(l.lease) || typeof l.path !== "string" || !l.path.endsWith(`.${l.lease}`) || !validText(l.name,200) || !l.name || /[\/\\\r\n]/.test(l.name))) return { error: "Invalid lease download." };
   const files = [
     { bucket: "track-previews", path: track.preview_path, limit: 50 * 1024 * 1024 },
     { bucket: "track-covers", path: track.cover_path, limit: 5 * 1024 * 1024 },
     { bucket: "purchased-beats", path: downloadPath, limit: 50 * 1024 * 1024 },
+    ...leases.map(l=>({ bucket: "purchased-beats", path:l.path, limit:50*1024*1024 })),
   ];
   for (const file of files) {
     if (!file.path && file.bucket !== "track-previews") continue;
@@ -33,8 +35,8 @@ export async function saveTrack(track: AdminTrack, downloadPath?: string, downlo
     if (error || !data || typeof data.size !== "number" || data.size <= 0 || data.size > file.limit) return { error: "An uploaded file is missing or too large. Please upload it again." };
   }
   if (downloadPath && (!validText(downloadName, 200) || !downloadName || /[\/\\\r\n]/.test(downloadName))) return { error: "Invalid download filename." };
-  const { error } = await session.supabase.rpc("save_catalog_track", {
-    p_track: { ...track, title: track.title.trim() }, p_download_path: downloadPath || null, p_download_name: downloadName || null,
+  const { error } = await session.supabase.rpc("save_catalog_track_with_leases", {
+    p_track: { ...track, title: track.title.trim() }, p_download_path: downloadPath || null, p_download_name: downloadName || null, p_leases: leases,
   });
   if (error) return { error: "Couldn't save this track. Please try again." };
   revalidatePath("/");

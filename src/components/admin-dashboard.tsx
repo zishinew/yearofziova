@@ -89,7 +89,9 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
         }
         const preview = await upload("preview", "track-previews", audioTypes, 50);
         const cover = await upload("cover", "track-covers", coverTypes, 5);
-        const download = await upload("download", "purchased-beats", { ...audioTypes, zip: "application/zip" }, 50);
+        const mp3 = kind === "beats" ? await upload("mp3", "purchased-beats", {mp3: "audio/mpeg"}, 50) : null;
+        const wav = kind === "beats" ? await upload("wav", "purchased-beats", {wav: "audio/wav"}, 50) : null;
+        const download = kind === "loops" ? await upload("download", "purchased-beats", { ...audioTypes, zip: "application/zip" }, 50) : null;
         const previewPath = preview?.path || track?.preview_path;
         if (!previewPath) throw new Error("Choose a preview audio file.");
         const duration = String(values.get("duration") || "").trim();
@@ -103,7 +105,8 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
           preview_path: previewPath, cover_path: cover?.path || track?.cover_path || null,
           published: values.get("published") === "on",
         };
-        const result = await saveTrack(payload, download?.path, download?.file.name.replace(/[^\w. ()-]/g, "_").slice(0, 200));
+        const leases = ([{lease:"mp3" as const, upload:mp3}, {lease:"wav" as const, upload:wav}]).flatMap(({lease,upload})=>upload ? [{lease,path:upload.path,name:upload.file.name.replace(/[^\w. ()-]/g,"_").slice(0,200)}] : []);
+        const result = await saveTrack(payload, download?.path, download?.file.name.replace(/[^\w. ()-]/g, "_").slice(0, 200), leases);
         if (result.error) throw new Error(result.error);
         form.current?.reset();
         autoBpm.current = null;
@@ -136,10 +139,13 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
           <label>Preview audio<span className="admin-hint">Public · MP3, WAV, OGG, M4A or FLAC · up to 50 MB{track ? " · leave empty to keep current" : ""}</span>
             <input name="preview" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac" required={!track} onChange={event => readFilename(event.target.files?.[0], true)} /></label>
           <CoverCropper value={coverCrop} onChange={setCoverCrop} onLoading={setCoverLoading} existingCover={Boolean(track?.cover_path)} />
-          <label>Purchased download<span className="admin-hint">Private · audio or ZIP · optional · up to 50 MB · existing file stays unless replaced</span>
-            <input name="download" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac,.zip" onChange={event => readFilename(event.target.files?.[0])} /></label>
+          {kind === "beats" ? <>
+            <label>MP3 lease download<span className="admin-hint">Private · MP3 · up to 50 MB · leave empty to keep current</span><input name="mp3" type="file" accept=".mp3" onChange={event=>readFilename(event.target.files?.[0])} /></label>
+            <label>WAV lease download<span className="admin-hint">Private · WAV · up to 50 MB · leave empty to keep current</span><input name="wav" type="file" accept=".wav" onChange={event=>readFilename(event.target.files?.[0])} /></label>
+          </> : <label>Purchased download<span className="admin-hint">Private · audio or ZIP · optional · up to 50 MB · existing file stays unless replaced</span>
+            <input name="download" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac,.zip" onChange={event => readFilename(event.target.files?.[0])} /></label>}
           <label className="admin-checkbox"><input name="published" type="checkbox" defaultChecked={track?.published ?? true} />Publish in {kind === "beats" ? "Beat Vault" : "Loop Kit"}</label>
-          {kind === "beats" && <p className="admin-hint">Every beat is $24.99 CAD.</p>}
+          {kind === "beats" && <p className="admin-hint">MP3 $24.99 CAD · WAV $34.99 CAD. Upload each format to enable its checkout.</p>}
           <button className="auth-submit" type="submit" disabled={coverLoading}>{coverLoading ? "Opening cover…" : pending ? status || "Please wait…" : track ? "Save changes" : "Upload track"}</button>
         </fieldset>
         {error && <p className="auth-error" role="alert">{error}</p>}

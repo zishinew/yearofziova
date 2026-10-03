@@ -1,0 +1,68 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { test } from "node:test";
+import { PGlite } from "@electric-sql/pglite";
+import ts from "typescript";
+
+const source = await readFile(new URL("../src/lib/payments.ts",import.meta.url),"utf8");
+const payments = await import(`data:text/javascript;base64,${Buffer.from(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext}}).outputText).toString("base64")}`);
+test("checkout rejects invalid leases, forged IDs, duplicate beats and oversized carts; prices are fixed",()=>{
+ const id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+ assert.deepEqual(payments.LEASE_PRICES,{mp3:2499,wav:3499});
+ assert.deepEqual(payments.parseCheckoutItems([{id,lease:"mp3",price:1}]),[{id,lease:"mp3"}]);
+ for (const input of [null,[],[{id,lease:"exclusive"}],[{id:"forged",lease:"wav"}],[{id,lease:"mp3"},{id,lease:"wav"}],Array(31).fill({id,lease:"mp3"})]) assert.equal(payments.parseCheckoutItems(input),null);
+});
+test("paid orders grant only the purchased lease, replay safely and cannot be revived after refund",async()=>{
+ const db=await PGlite.create();
+ const owner="11111111-1111-4111-8111-111111111111",buyer="22222222-2222-4222-8222-222222222222",other="33333333-3333-4333-8333-333333333333";
+ const beat="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",order="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+ try {
+ await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
+ create schema auth; create schema storage; create table auth.users(id uuid primary key);
+ create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+ grant usage on schema auth,storage to anon,authenticated;
+ create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+ create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text);
+ alter table storage.objects enable row level security;
+ grant select,insert,update,delete on storage.objects to anon,authenticated;`);
+ for (const file of ["20261002224637_customer_downloads.sql","20261002234529_admin_catalog_uploads.sql","20261002235432_consolidate_catalog_policies.sql","20261003040033_stripe_checkout.sql"]) await db.exec(await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),"utf8"));
+ await db.query("insert into auth.users values($1),($2),($3)",[owner,buyer,other]);
+ await db.query("insert into admin_users(user_id) values($1)",[owner]);
+ await db.query("insert into catalog_tracks(id,kind,title,bpm,preview_path,published) values($1,'beats','Test beat',140,$2,true)",[beat,`${beat}/preview.mp3`]);
+ await db.query("insert into storage.objects(bucket_id,name) values('purchased-beats',$1),('purchased-beats',$2)",[`${beat}/full.mp3`,`${beat}/full.wav`]);
+ const asUser=async id=>{await db.exec("reset role; set role authenticated");await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);};
+ await asUser(owner);
+ for (const lease of ["mp3","wav"]) await db.query("select save_track_lease($1,$2,$3,$4)",[beat,lease,`${beat}/full.${lease}`,`beat.${lease}`]);
+ await assert.rejects(db.query("select save_track_lease($1,'wav',$2,'beat.wav')",[beat,`${beat}/full.mp3`]),/Invalid lease/);
+ await asUser(buyer);
+ await assert.rejects(db.query("select save_track_lease($1,'mp3',$2,'beat.mp3')",[beat,`${beat}/full.mp3`]),/Admin access/);
+ await assert.rejects(db.query("select complete_checkout_order($1,'cs_test_1','pi_1',2499,'cad')",[order]),/permission denied/);
+ await assert.rejects(db.query("insert into checkout_orders(id,user_id,items,amount) values($1,$2,'[]',1)",[order,buyer]),/permission denied/);
+ await db.exec("reset role");
+ const items=JSON.stringify([{id:beat,product_id:`${beat}:mp3`,lease:"mp3",title:"Test beat",unit_amount:2499}]);
+ await db.query("insert into checkout_orders(id,user_id,items,amount,stripe_session_id) values($1,$2,$3,2499,'cs_test_1')",[order,buyer,items]);
+ for (const args of [[order,"cs_forged","pi_1",2499,"cad"],[order,"cs_test_1","pi_1",1,"cad"],[order,"cs_test_1","pi_1",null,"cad"],[order,"cs_test_1",null,2499,"cad"]]) await assert.rejects(db.query("select complete_checkout_order($1,$2,$3,$4,$5)",args));
+ assert.equal((await db.query("select * from purchases")).rows.length,0);
+ for(let i=0;i<2;i++) await db.query("select complete_checkout_order($1,'cs_test_1','pi_1',2499,'cad')",[order]);
+ assert.equal((await db.query("select * from purchases")).rows.length,1);
+ await asUser(buyer);
+ assert.deepEqual((await db.query("select name from storage.objects")).rows,[{name:`${beat}/full.mp3`}]);
+ assert.equal((await db.query("select * from checkout_orders")).rows.length,1);
+ await asUser(other);
+ assert.equal((await db.query("select * from checkout_orders")).rows.length,0);
+ assert.equal((await db.query("select * from storage.objects")).rows.length,0);
+ await db.exec("reset role");
+ await db.query("select complete_checkout_order($1,'cs_test_1','pi_1',2499,'cad',true)",[order]);
+ await db.query("select complete_checkout_order($1,'cs_test_1','pi_1',2499,'cad')",[order]);
+ assert.equal((await db.query("select status from checkout_orders")).rows[0].status,"refunded");
+ await asUser(buyer);
+ assert.equal((await db.query("select * from storage.objects")).rows.length,0);
+ // A later purchase restores access without resurrecting the refunded order.
+ await db.exec("reset role");
+ const next="cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+ await db.query("insert into checkout_orders(id,user_id,items,amount,stripe_session_id) values($1,$2,$3,2499,'cs_test_2')",[next,buyer,items]);
+ await db.query("select complete_checkout_order($1,'cs_test_2','pi_2',2499,'cad')",[next]);
+ await asUser(buyer);
+ assert.deepEqual((await db.query("select name from storage.objects")).rows,[{name:`${beat}/full.mp3`}]);
+ } finally {await db.close();}
+});

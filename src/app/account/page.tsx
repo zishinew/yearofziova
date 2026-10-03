@@ -13,7 +13,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: purchases, error } = await supabase.from("purchases")
-    .select("id, purchased_at, download_products!inner(id, title, bpm)")
+    .select("id, purchased_at, download_products!inner(id, title, bpm, lease)")
     .eq("user_id", user.id).eq("status", "paid").order("purchased_at", { ascending: false });
   const params = await searchParams;
   const { data: admin } = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
@@ -32,7 +32,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               const product = Array.isArray(purchase.download_products) ? purchase.download_products[0] : purchase.download_products;
               if (!product) return null;
               return <li key={purchase.id}>
-                <div><h2>{product.title}</h2><p>{product.bpm ? `${product.bpm} BPM` : "Purchased beat"}</p></div>
+                <div><h2>{product.title}</h2><p>{product.bpm ? `${product.bpm} BPM` : "Purchased beat"}{product.lease ? ` · ${product.lease.toUpperCase()} lease` : ""}</p></div>
                 <DownloadButton purchaseId={purchase.id} />
               </li>;
             })}

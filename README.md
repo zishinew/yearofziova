@@ -21,9 +21,9 @@ Add audio previews under `public/audio/` and covers under `public/covers/`, then
 
 Rows expand on mouse hover. Clicking, tapping, or pressing Enter/Space pins the details open; repeat to close. Details show the supplied description, moods, tags, notes, genre/key, and audio player. Only one audio preview plays at a time. Missing artwork uses a neutral placeholder and missing durations display a dash.
 
-Every beat is $24.99 CAD, shown inside its expanded details. Loop pricing is handled by inquiry. Licensing and purchase inquiries link to Instagram @yearofziova. An optional `purchaseUrl` can link to a real checkout when available.
+MP3 leases are $24.99 CAD; WAV leases are $34.99 CAD. The cart uses Stripe-hosted Checkout. Exclusive leases and loop pricing are handled through Instagram @yearofziova.
 
-The catalogs show a coming-soon state until tracks are added. No demo tracks or checkout are presented as real inventory.
+The catalogs show a coming-soon state until tracks are added. A lease can only be purchased after its matching private file is uploaded.
 
 ## Customer accounts and redownloads
 
@@ -45,7 +45,7 @@ The header Account link opens email/password sign-in and signup in a card over t
 6. Register each deliverable in `download_products` with its catalog ID, title, BPM, private Storage path, and download filename.
 7. After verifying payment, add a `purchases` record for the customer's Supabase Auth user ID and product ID. Set `source` and `order_reference` to your payment/order reference. For existing Instagram orders, verify the purchase before assigning it to the customer's confirmed account. Mark refunds `refunded` to remove future download access.
 
-The dashboard registers private uploads in `download_products` automatically using the catalog track UUID as the product ID. Customer purchase grants still require verified payment; uploading/publishing a track does not create purchase access.
+The dashboard registers separate MP3 and WAV products as `<track UUID>:mp3` and `<track UUID>:wav`; old manual products retain their IDs. Customer purchase grants require verified payment; uploading/publishing a track does not create purchase access.
 
 ### Admin permissions
 
@@ -63,7 +63,7 @@ insert into public.purchases (user_id, product_id, source, order_reference)
 values ('CONFIRMED_CUSTOMER_AUTH_UUID', 'YOUR_CATALOG_ID', 'instagram', 'YOUR_VERIFIED_ORDER_REFERENCE');
 ```
 
-Purchase grants must be created by the owner or a trusted payment webhook, never by the browser or a checkout success URL. There is no checkout/payment webhook yet because a payment provider has not been configured. The library reads verified grants; login alone does not unlock anything.
+Purchase grants are created by the signature-verified Stripe webhook, never by the browser or a checkout success URL. The library reads verified grants; login alone does not unlock anything. See [STRIPE_SETUP.md](STRIPE_SETUP.md) for credentials, sandbox testing and deployment setup.
 
 The app uses cookie sessions, server-verified identity, row-level security, and 60-second signed download links. Customers cannot grant themselves purchases, read another customer's purchases, upload files, or download unowned/refunded deliverables. An already-issued signed link remains valid until it expires.
 

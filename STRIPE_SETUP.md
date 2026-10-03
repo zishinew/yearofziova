@@ -1,0 +1,57 @@
+# ziova Payments
+
+The Stripe implementation planner was run and its hosted Checkout recommendation accepted on 2026-10-02. This is a direct digital beat store with one-time CAD payments, not a subscription or marketplace.
+
+## Integration
+
+- MP3 lease: $24.99 CAD. WAV lease: $34.99 CAD. Exclusive leases remain Instagram DM inquiries. Loops remain inquiry-only.
+- Customers sign in with a confirmed email before checkout. The server validates published beats, lease deliverables and fixed prices, then creates an order and Stripe-hosted Checkout Session. Dynamic payment methods are enabled through Stripe's dashboard; adaptive currency conversion is disabled to charge CAD.
+- Private files are uploaded separately for MP3 and WAV in the admin dashboard. Old single-file/manual purchases still work. An old file does not automatically become an MP3 or WAV product: upload each format before selling it.
+- Raw-body, signature-verified webhooks retrieve current Stripe state, verify order owner, amount, currency and line items, then grant purchases in a transaction. A database lock and unique order/product constraint prevent repeated grants. Failed processing returns HTTP 500 for Stripe retries.
+- Success redirects do not grant purchases. The return page polls order status; only paid orders clear the matching items from the cart. Purchased files appear in My Downloads with short-lived signed download links.
+- Full refunds revoke that order's downloads. Partial refunds retain access. Refunds cannot be undone by an older payment event. A separate later purchase can grant access again.
+
+## Credentials
+
+Set these on the server, locally in `.env.local` and in the deployment environment. Never commit credentials or prefix them with `NEXT_PUBLIC_`.
+
+| Variable | Value |
+| --- | --- |
+| `STRIPE_SECRET_KEY` | Secret API key from **yearofziova sandbox**, starting with `sk_test_` |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret for the matching webhook endpoint |
+| `SUPABASE_SECRET_KEY` | Server secret key for the yearofziova Supabase project |
+| `SITE_URL` | `http://localhost:3000` locally; `https://yearofziova.com` on deployment |
+| `STRIPE_LIVE_PAYMENTS` | Leave `false` until the live integration has been configured and verified |
+
+Hosted Checkout does not require a Stripe publishable key in the frontend. MCP account authorization does not supply your site's API key.
+
+## Sandbox webhook
+
+Created in **yearofziova sandbox**, account `acct_1UMF2hEI9Cu5u6qq`:
+
+- Endpoint ID: `we_1UMKEhEI9Cu5u6qqPdHUbZRO`
+- URL: `https://yearofziova.com/api/stripe/webhook`
+- API version: `2026-09-30.endive` (Stripe SDK 23.0.0's version)
+- Events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.refunded`
+
+The endpoint's secret was saved only in local `.env.local`. Copy it to the deployment's `STRIPE_WEBHOOK_SECRET`; the public endpoint cannot work until this code and the credentials are deployed.
+
+For local payment testing, use Stripe CLI forwarding instead:
+
+```sh
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+Use the CLI's signing secret locally while forwarding. It differs from the deployed endpoint secret. Restore the endpoint secret for deployment.
+
+## Verification before accepting real payments
+
+1. Add server credentials, restart the dev server and upload at least one MP3/WAV lease file.
+2. Sign in as a customer, pay in the sandbox, confirm the correct format appears in My Downloads, and verify another account cannot access it.
+3. Verify a declined payment creates no downloads; test asynchronous payment completion, webhook retries, and a full refund.
+4. Deployment must have the webhook route and matching signing secret. Confirm successful event delivery in Stripe Workbench.
+5. For live payments, use a live secret API key and separate live webhook endpoint/secret, and set `STRIPE_LIVE_PAYMENTS=true`. Complete Stripe account activation and configure your licensing/refund terms and applicable taxes before launch.
+
+Automated tests cover price/input validation and database permissions, delivery isolation, duplicate fulfillment, mismatched payment rejection, refunds and repurchases. Payment end-to-end verification requires the merchant credentials and deliverables above.
+
+References: [Hosted Checkout](https://docs.stripe.com/payments/accept-a-payment?payment-ui=checkout&ui=stripe-hosted), [fulfillment](https://docs.stripe.com/checkout/fulfillment?payment-ui=stripe-hosted), [webhooks](https://docs.stripe.com/webhooks), [Supabase API keys](https://supabase.com/docs/guides/api/api-keys).
