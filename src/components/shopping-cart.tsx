@@ -5,7 +5,7 @@ import { BEAT_PRICE_CAD, type Beat } from "@/data/beats";
 
 type Lease = "mp3" | "wav";
 type Item = Pick<Beat, "id" | "title"> & { lease: Lease };
-const prices: Record<Lease, number> = { mp3: Math.round(BEAT_PRICE_CAD * 100), wav: 3500 };
+const prices: Record<Lease, number> = { mp3: Math.round(BEAT_PRICE_CAD * 100), wav: 3499 };
 const leaseName = (lease: Lease) => `${lease.toUpperCase()} lease`;
 const key = "ziova-cart-v1";
 const changed = "ziova-cart-changed";
