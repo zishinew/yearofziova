@@ -68,8 +68,8 @@ export function SiteCanvas({ skipLoader = false, beatTracks = beats, loopTracks 
         <button
           type="button"
           aria-label="Ziova home"
-          disabled={loading}
-          onClick={() => navigate("home")}
+          aria-disabled={loading}
+          onClick={() => { if (!loading) navigate("home"); }}
           className={`ziova-logo ziova-logo-${phase}`}
           onAnimationEnd={() => {
             if (phase === "entering") setPhase("center");
