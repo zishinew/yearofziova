@@ -7,7 +7,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "ziova",
   applicationName: "ziova",
-  icons: { icon: { url: "/icon.png", type: "image/png" }, apple: "/icon.png" },
+  icons: {
+    icon: { url: "/icon?v=2", type: "image/png", sizes: "32x32" },
+    shortcut: "/icon?v=2",
+    apple: "/icon.png?v=2",
+  },
   description: "Explore the Beat Vault and Loop Kit by ziova. Beats are $24.99 CAD. DM @yearofziova on Instagram for inquiries.",
 };
 
