@@ -1,77 +1,53 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { BEAT_PRICE_CAD, type Beat } from "@/data/beats";
+import { useCart } from "@/components/shopping-cart";
 
 function duration(seconds?: number) {
   if (seconds === undefined || !Number.isFinite(seconds) || seconds < 0) return "—";
   return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 }
-
+function TrackRow({ track, kind }: { track: Beat; kind: "beats" | "loops" }) {
+  const audio = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [error, setError] = useState("");
+  const cart = useCart();
+  const added = cart.items.some(item => item.id === track.id);
+  async function toggle() {
+    const player = audio.current;
+    if (!player) return;
+    if (!player.paused) { player.pause(); return; }
+    setError("");
+    try { await player.play(); } catch { setError("Couldn't play this preview. Please try again."); }
+  }
+  return <article className={`playlist-track ${playing ? "playlist-track-playing" : ""}`}>
+    <button type="button" className="playlist-summary" onClick={() => void toggle()} disabled={!track.audioUrl} aria-label={`${playing ? "Pause" : "Play"} ${track.title}`} aria-pressed={playing}>
+      <span className="playlist-identity">
+        <span className="playlist-art">{track.coverArt ? <Image src={track.coverArt} alt="" width={48} height={48} className="playlist-cover" /> : <span className="playlist-cover playlist-cover-empty" aria-hidden="true">♫</span>}<span className="playlist-play-icon" aria-hidden="true">{playing ? "Ⅱ" : "▶"}</span></span>
+        <span className="playlist-title">{track.title}</span>
+      </span>
+      <span className="playlist-number"><span className="sr-only">BPM: </span>{track.bpm}</span>
+      <span className="playlist-number"><span className="sr-only">Duration: </span>{duration(track.durationSeconds)}</span>
+    </button>
+    <div className="playlist-details">
+      {track.tags?.length ? <div className="track-tags" aria-label="Tags">{track.tags.map((tag, i) => <span key={`${tag}-${i}`}>{tag}</span>)}</div> : null}
+      {track.notes?.length ? <div className="track-notes"><span>Additional notes</span>{track.notes.map((note, index) => <p key={index}>{note}</p>)}</div> : null}
+      <div className="track-actions">{kind === "beats" ? <><span>${BEAT_PRICE_CAD.toFixed(2)} CAD</span><button type="button" className="track-add" onClick={() => cart.add(track)} disabled={added}>{added ? "Added to cart" : "Add to cart"}</button></> : <a href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer">Inquire about this loop ↗</a>}</div>
+      {error && <p role="alert" className="auth-error">{error}</p>}
+    </div>
+    {track.audioUrl && <audio ref={audio} preload="none" src={track.audioUrl} onPlay={event => {
+      document.querySelectorAll("audio").forEach(player => { if (player !== event.currentTarget) player.pause(); }); setPlaying(true);
+    }} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} onError={() => { setPlaying(false); setError("This preview is unavailable. Please try again later."); }} />}
+  </article>;
+}
 export function SoundPlaylist({ kind, tracks, loadError = false }: { kind: "beats" | "loops"; tracks: Beat[]; loadError?: boolean }) {
-  const [hovered, setHovered] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<string | null>(null);
   const title = kind === "beats" ? "Beat Vault" : "Loop Kit";
-
-  return (
-    <section className="sound-playlist" aria-label={title}>
-      <h1>{title}</h1>
-      <div className="playlist-columns" aria-hidden="true">
-        <span>Title</span><span>BPM</span><span>Time</span>
-      </div>
-      <div className="playlist-tracks">
-        {tracks.map((track) => (
-          <details
-            key={track.id}
-            className="playlist-track"
-            open={hovered === track.id || expanded === track.id}
-            onPointerEnter={(event) => {
-              if (event.pointerType === "mouse") setHovered(track.id);
-            }}
-            onPointerLeave={(event) => {
-              if (event.pointerType === "mouse") setHovered(null);
-            }}
-          >
-            <summary
-              className="playlist-summary"
-              onClick={(event) => {
-                event.preventDefault();
-                setExpanded(expanded === track.id ? null : track.id);
-              }}
-            >
-              <span className="playlist-identity">
-                {track.coverArt ? (
-                  <Image src={track.coverArt} alt="" width={48} height={48} className="playlist-cover" />
-                ) : <span className="playlist-cover playlist-cover-empty" aria-hidden="true">♫</span>}
-                <span className="playlist-title">{track.title}</span>
-              </span>
-              <span className="playlist-number"><span className="sr-only">BPM: </span>{track.bpm}</span>
-              <span className="playlist-number"><span className="sr-only">Duration: </span>{duration(track.durationSeconds)}</span>
-            </summary>
-            <div className="playlist-details">
-              {track.description && <p className="track-description">{track.description}</p>}
-              {track.moods?.length ? <div className="track-meta"><span>Moods</span><p>{track.moods.join(" · ")}</p></div> : null}
-              {track.tags?.length ? <div className="track-meta"><span>Tags</span><div className="track-tags">{track.tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div> : null}
-              {(track.key || track.genre) && <div className="track-meta"><span>Sound</span><p>{[track.genre, track.key].filter(Boolean).join(" · ")}</p></div>}
-              {track.notes?.length ? <div className="track-meta"><span>Notes</span><div>{track.notes.map((note, index) => <p key={index}>{note}</p>)}</div></div> : null}
-              {track.audioUrl && (
-                <audio controls preload="none" src={track.audioUrl} aria-label={`Preview ${track.title}`}
-                  onPlay={(event) => {
-                    document.querySelectorAll("audio").forEach((audio) => {
-                      if (audio !== event.currentTarget) audio.pause();
-                    });
-                  }} />
-              )}
-              <a className="track-inquiry" href={track.purchaseUrl || "https://www.instagram.com/yearofziova/"} target="_blank" rel="noreferrer">
-                {kind === "beats" ? `$${BEAT_PRICE_CAD.toFixed(2)} CAD · Inquire` : "Inquire about this loop"} <span aria-hidden="true">↗</span>
-              </a>
-            </div>
-          </details>
-        ))}
-        {loadError && <p className="playlist-empty" role="status">Couldn’t load the catalog. Please refresh and try again.</p>}
-        {!loadError && tracks.length === 0 && <p className="playlist-empty">{kind === "beats" ? "Beats" : "Loops"} coming soon.</p>}
-      </div>
-    </section>
-  );
+  return <section className="sound-playlist" aria-label={title}><h1>{title}</h1>
+    <div className="playlist-columns" aria-hidden="true"><span>Title</span><span>BPM</span><span>Time</span></div>
+    <div className="playlist-tracks">{tracks.map(track => <TrackRow key={track.id} track={track} kind={kind} />)}
+      {loadError && <p className="playlist-empty" role="status">Couldn’t load the catalog. Please refresh and try again.</p>}
+      {!loadError && tracks.length === 0 && <p className="playlist-empty">{kind === "beats" ? "Beats" : "Loops"} coming soon.</p>}
+    </div></section>;
 }

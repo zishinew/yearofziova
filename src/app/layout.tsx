@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SiteSession } from "@/components/site-session";
+import { ShoppingCart } from "@/components/shopping-cart";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode; auth?: React.ReactNode }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body><SiteSession>{children}{auth}</SiteSession></body>
+      <body><SiteSession><ShoppingCart>{children}{auth}</ShoppingCart></SiteSession></body>
     </html>
   );
 }

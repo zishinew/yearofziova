@@ -149,8 +149,9 @@ body:has(.auth-dialog[open]) .account-content { filter: blur(8px); }
 .playlist-columns { color: #888; font-size: 11px; padding: 12px 16px 12px 80px; border-bottom: 1px solid rgba(23,23,23,0.12); }
 .playlist-columns > span:not(:first-child) { text-align: right; }
 .playlist-track { border-bottom: 1px solid rgba(23,23,23,0.06); border-radius: 4px; transition: background 180ms; }
-.playlist-track[open] { background: rgba(255,255,255,0.78); }
-.playlist-summary { list-style: none; padding: 12px 16px; cursor: pointer; }
+.playlist-track:hover, .playlist-track-playing { background: rgba(255,255,255,0.78); }
+.playlist-summary { width: 100%; text-align: left; padding: 12px 16px; cursor: pointer; }
+.playlist-summary:disabled { cursor: default; }
 .playlist-summary::-webkit-details-marker { display: none; }
 .playlist-summary:focus-visible { outline: 2px solid #ec4899; outline-offset: -2px; border-radius: 4px; }
 .playlist-identity { display: flex; gap: 16px; align-items: center; min-width: 0; }
@@ -158,7 +159,7 @@ body:has(.auth-dialog[open]) .account-content { filter: blur(8px); }
 .playlist-cover-empty { display: grid; place-items: center; background: rgba(23,23,23,0.05); color: #999; font-size: 18px; }
 .playlist-title { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .playlist-number { font-size: 12px; color: #737373; text-align: right; font-variant-numeric: tabular-nums; }
-.playlist-details { padding: 4px 16px 24px 80px; font-size: 12px; line-height: 1.7; color: #737373; animation: track-reveal 180ms ease-out; }
+.playlist-details { padding: 4px 16px 24px 80px; font-size: 12px; line-height: 1.7; color: #737373; }
 .track-description { max-width: 560px; margin-bottom: 18px; color: #525252; }
 .track-meta { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 16px; margin-bottom: 10px; }
 .track-meta > span { color: #a3a3a3; font-size: 11px; }
@@ -235,3 +236,32 @@ body:has(.auth-dialog[open]) .account-content { filter: blur(8px); }
     transition-duration: 1ms;
   }
 }
+
+.header-actions { position: absolute; top: 40px; right: clamp(24px, 5vw, 96px); display: flex; gap: 24px; align-items: center; font-size: 12px; pointer-events: auto; }
+.header-cart { cursor: pointer; }
+.header-actions a:hover, .header-cart:hover { color: #e8227a; }
+.playlist-art { position: relative; flex-shrink: 0; }
+.playlist-play-icon { position: absolute; inset: 0; display: grid; place-items: center; background: #0006; color: white; opacity: 0; border-radius: 3px; transition: opacity 180ms; }
+.playlist-summary:hover .playlist-play-icon, .playlist-summary:focus-visible .playlist-play-icon, .playlist-track-playing .playlist-play-icon { opacity: 1; }
+.track-notes { margin-top: 12px; font-size: 11px; }
+.track-notes > span { color: #a3a3a3; }
+.track-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; margin-top: 14px; font-size: 11px; }
+.track-add { padding: 6px 10px; border: 1px solid #17171720; border-radius: 3px; cursor: pointer; transition: background 180ms; }
+.track-add:hover { background: #17171708; }
+.track-add:disabled { color: #999; border-color: transparent; cursor: default; }
+.cart-dialog { position: fixed; inset: 0; margin: auto; width: min(480px, calc(100% - 32px)); max-height: calc(100dvh - 48px); padding: 32px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fffffff5; color: #171717; overflow-y: auto; }
+.cart-dialog[open] { animation: page-arrive 260ms ease-out; }
+.cart-dialog::backdrop { background: #ffffff50; backdrop-filter: blur(8px); }
+.cart-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.cart-heading h2 { font-size: 20px; font-weight: 400; }
+.cart-heading button { cursor: pointer; padding: 8px; font-size: 22px; }
+.cart-items { margin-top: 20px; }
+.cart-items li { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 0; border-bottom: 1px solid #17171710; font-size: 13px; }
+.cart-items li p { overflow-wrap: anywhere; }
+.cart-items li span { display: block; margin-top: 6px; color: #888; font-size: 11px; }
+.cart-items li button { cursor: pointer; font-size: 11px; color: #888; }
+.cart-total { display: flex; justify-content: space-between; margin-top: 24px; font-size: 13px; }
+.cart-note { margin-top: 24px; color: #888; font-size: 12px; line-height: 1.8; }
+.cart-inquiry { display: inline-block; margin-top: 20px; font-size: 12px; }
+@media (max-width: 639px) { .header-actions { gap: 16px; font-size: 11px; } .cart-dialog { padding: 24px; } }
+@media (prefers-reduced-motion: reduce) { .cart-dialog[open] { animation: none; } }

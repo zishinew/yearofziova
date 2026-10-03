@@ -6,6 +6,7 @@ import { startTransition, useCallback, useEffect, useState } from "react";
 import { PageTransition } from "@/components/page-transition";
 import { useSiteSession } from "@/components/site-session";
 import { PixelLiquidBg } from "@/components/ui/pixel-liquid-bg";
+import { CartButton } from "@/components/shopping-cart";
 import { SoundPlaylist } from "@/components/sound-playlist";
 import { beats, loops, type Beat } from "@/data/beats";
 
@@ -58,7 +59,7 @@ export function SiteCanvas({ skipLoader = false, beatTracks = beats, loopTracks 
         </div>
       )}
       <header className={`vault-header ${loading ? "vault-header-loading" : ""}`} aria-label="Site header">
-        {!loading && <Link href="/login" className="header-account" scroll={false}>Account</Link>}
+        {!loading && <div className="header-actions"><CartButton /><Link href="/login" scroll={false}>Account</Link></div>}
         {view !== "home" && !loading && (
           <button type="button" className="vault-back" onClick={() => navigate("home")}>
             <span aria-hidden="true">←</span> Back

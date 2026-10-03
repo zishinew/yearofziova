@@ -82,9 +82,9 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
         const payload: AdminTrack = {
           id, kind, title: String(values.get("title") || "").trim(), bpm: Number(values.get("bpm")),
           duration_seconds: duration ? Number(duration) : preview ? await audioLength(preview.file) : track?.duration_seconds ?? null,
-          genre: String(values.get("genre") || "").trim(), musical_key: String(values.get("key") || "").trim(),
-          description: String(values.get("description") || "").trim(),
-          moods: list(values.get("moods"), ","), tags: list(values.get("tags"), ","), notes: list(values.get("notes"), "\n"),
+          genre: track?.genre || "", musical_key: track?.musical_key || "",
+          description: track?.description || "",
+          moods: track?.moods || [], tags: list(values.get("tags"), ","), notes: list(values.get("notes"), "\n"),
           preview_path: previewPath, cover_path: cover?.path || track?.cover_path || null,
           published: values.get("published") === "on",
         };
@@ -115,14 +115,8 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
             <label>BPM<input name="bpm" type="number" required min={1} max={400} step={1} defaultValue={track?.bpm} /></label>
             <label>Length in seconds<input name="duration" type="number" min={1} max={86400} step={1} placeholder="Auto from preview" defaultValue={track?.duration_seconds ?? ""} /></label>
           </div>
-          <div className="admin-field-pair">
-            <label>Genre<input name="genre" maxLength={120} defaultValue={track?.genre} /></label>
-            <label>Key<input name="key" maxLength={40} placeholder="e.g. F minor" defaultValue={track?.musical_key} /></label>
-          </div>
-          <label>Description<textarea name="description" maxLength={2000} rows={3} defaultValue={track?.description} /></label>
-          <label>Moods<span className="admin-hint">Separate with commas</span><input name="moods" maxLength={2400} defaultValue={track?.moods.join(", ")} /></label>
           <label>Tags<span className="admin-hint">Separate with commas</span><input name="tags" maxLength={2400} defaultValue={track?.tags.join(", ")} /></label>
-          <label>Notes<span className="admin-hint">One per line</span><textarea name="notes" maxLength={15000} rows={2} defaultValue={track?.notes.join("\n")} /></label>
+          <label>Additional notes<span className="admin-hint">One per line</span><textarea name="notes" maxLength={15000} rows={2} defaultValue={track?.notes.join("\n")} /></label>
           <label>Preview audio<span className="admin-hint">Public · MP3, WAV, OGG, M4A or FLAC · up to 50 MB{track ? " · leave empty to keep current" : ""}</span>
             <input name="preview" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac" required={!track} /></label>
           <CoverCropper value={coverCrop} onChange={setCoverCrop} onLoading={setCoverLoading} existingCover={Boolean(track?.cover_path)} />
