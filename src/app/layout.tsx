@@ -5,7 +5,9 @@ import { ShoppingCart } from "@/components/shopping-cart";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Ziova — Beats & Original Production",
+  title: "ziova",
+  applicationName: "ziova",
+  icons: { icon: { url: "/icon.png", type: "image/png" }, apple: "/icon.png" },
   description: "Explore the Beat Vault and Loop Kit by ziova. Beats are $24.99 CAD. DM @yearofziova on Instagram for inquiries.",
 };
 
