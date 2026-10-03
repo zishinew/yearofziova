@@ -14,28 +14,25 @@ function TrackRow({ track, kind }: { track: Beat; kind: "beats" | "loops" }) {
   const playing = playback.track?.id === track.id && playback.playing;
   const cart = useCart();
   const added = cart.items.some(item => item.id === track.id);
-  return <article className={`playlist-track ${playing ? "playlist-track-playing" : ""}`}>
+  return <article className={`playlist-track playlist-compact-row ${playing ? "playlist-track-playing" : ""}`}>
     <button type="button" className="playlist-summary" onClick={() => playback.play(track)} disabled={!track.audioUrl} aria-label={`${playing ? "Pause" : "Play"} ${track.title}`} aria-pressed={playing}>
       <span className="playlist-identity">
         <span className="playlist-art">{track.coverArt ? <Image src={track.coverArt} alt="" width={48} height={48} className="playlist-cover" /> : <span className="playlist-cover playlist-cover-empty" aria-hidden="true">♫</span>}<span className="playlist-play-icon" aria-hidden="true">{playing ? "Ⅱ" : "▶"}</span></span>
-        <span className="playlist-title">{track.title}</span>
+        <span className="playlist-name"><span className="playlist-title">{track.title}</span>{track.notes?.length ? <span className="playlist-inline-notes" title={track.notes.join(" · ")}>{track.notes.join(" · ")}</span> : null}</span>
       </span>
+      <span className="track-tags playlist-inline-tags" aria-label="Tags" title={track.tags?.join(" · ")}>{track.tags?.map((tag, i) => <span key={`${tag}-${i}`}>{tag}</span>)}</span>
       <span className="playlist-number"><span className="sr-only">BPM: </span>{track.bpm}</span>
       <span className="playlist-number"><span className="sr-only">Duration: </span>{duration(track.durationSeconds)}</span>
     </button>
-    <div className="playlist-details">
-      {track.tags?.length ? <div className="track-tags" aria-label="Tags">{track.tags.map((tag, i) => <span key={`${tag}-${i}`}>{tag}</span>)}</div> : null}
-      {track.notes?.length ? <div className="track-notes"><span>Additional notes</span>{track.notes.map((note, index) => <p key={index}>{note}</p>)}</div> : null}
-      <div className="track-actions">{kind === "beats" ? <><span>${BEAT_PRICE_CAD.toFixed(2)} CAD</span><button type="button" className="track-add" onClick={() => cart.add(track)} disabled={added}>{added ? "Added to cart" : "Add to cart"}</button></> : <a href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer">Inquire about this loop ↗</a>}</div>
-    </div>
+    {kind === "beats" ? <button type="button" className="track-add" title={`$${BEAT_PRICE_CAD.toFixed(2)} CAD`} aria-label={added ? `${track.title} added to cart` : `Add ${track.title} to cart for $${BEAT_PRICE_CAD.toFixed(2)} CAD`} onClick={() => cart.add(track)} disabled={added}>{added ? "Added" : "Add to cart"}</button> : <a className="track-loop-inquiry" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer">Inquire ↗</a>}
   </article>;
 }
 export function SoundPlaylist({ kind, tracks, loadError = false }: { kind: "beats" | "loops"; tracks: Beat[]; loadError?: boolean }) {
   const title = kind === "beats" ? "Beat Vault" : "Loop Kit";
   return <section className="sound-playlist" aria-label={title}><h1>{title}</h1>
-    <div className="playlist-columns" aria-hidden="true"><span>Title</span><span>BPM</span><span>Time</span></div>
+    <div className="playlist-table"><div className="playlist-columns" aria-hidden="true"><span>Title</span><span>Tags</span><span>BPM</span><span>Time</span><span /></div>
     <div className="playlist-tracks">{tracks.map(track => <TrackRow key={track.id} track={track} kind={kind} />)}
       {loadError && <p className="playlist-empty" role="status">Couldn’t load the catalog. Please refresh and try again.</p>}
       {!loadError && tracks.length === 0 && <p className="playlist-empty">{kind === "beats" ? "Beats" : "Loops"} coming soon.</p>}
-    </div></section>;
+    </div></div></section>;
 }
