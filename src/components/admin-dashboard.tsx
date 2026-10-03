@@ -4,6 +4,7 @@ import { useRef, useState, useTransition, type FormEvent } from "react";
 import { saveTrack, setTrackPublished } from "@/app/admin/actions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { audioTypes, coverTypes, type AdminTrack } from "@/lib/track-upload";
+import { CoverCropper, croppedCover, type CoverSelection } from "@/components/cover-cropper";
 
 function list(value: FormDataEntryValue | null, separator: string) {
   return String(value || "").split(separator).map(v => v.trim()).filter(Boolean);
@@ -40,9 +41,12 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
   const [pending, startTransition] = useTransition();
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [coverCrop, setCoverCrop] = useState<CoverSelection | null>(null);
+  const [coverLoading, setCoverLoading] = useState(false);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (coverLoading) return;
     const values = new FormData(event.currentTarget);
     setError("");
     startTransition(async () => {
@@ -63,6 +67,11 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
         return { path, file };
       }
       try {
+        values.delete("cover");
+        if (coverCrop) {
+          setStatus("Preparing cover crop…");
+          values.set("cover", await croppedCover(coverCrop));
+        }
         const preview = await upload("preview", "track-previews", audioTypes, 50);
         const cover = await upload("cover", "track-covers", coverTypes, 5);
         const download = await upload("download", "purchased-beats", { ...audioTypes, zip: "application/zip" }, 50);
@@ -82,6 +91,7 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
         const result = await saveTrack(payload, download?.path, download?.file.name.replace(/[^\w. ()-]/g, "_").slice(0, 200));
         if (result.error) throw new Error(result.error);
         form.current?.reset();
+        setCoverCrop(null);
         setStatus(payload.published ? "Published. Your track is now in the catalog." : "Draft saved.");
         onSaved();
       } catch (problem) {
@@ -115,13 +125,12 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
           <label>Notes<span className="admin-hint">One per line</span><textarea name="notes" maxLength={15000} rows={2} defaultValue={track?.notes.join("\n")} /></label>
           <label>Preview audio<span className="admin-hint">Public · MP3, WAV, OGG, M4A or FLAC · up to 50 MB{track ? " · leave empty to keep current" : ""}</span>
             <input name="preview" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac" required={!track} /></label>
-          <label>Cover art<span className="admin-hint">JPG, PNG or WEBP · up to 5 MB{track?.cover_path ? " · leave empty to keep current" : ""}</span>
-            <input name="cover" type="file" accept=".jpg,.jpeg,.png,.webp" /></label>
+          <CoverCropper value={coverCrop} onChange={setCoverCrop} onLoading={setCoverLoading} existingCover={Boolean(track?.cover_path)} />
           <label>Purchased download<span className="admin-hint">Private · audio or ZIP · optional · up to 50 MB · existing file stays unless replaced</span>
             <input name="download" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac,.zip" /></label>
           <label className="admin-checkbox"><input name="published" type="checkbox" defaultChecked={track?.published ?? true} />Publish in {kind === "beats" ? "Beat Vault" : "Loop Kit"}</label>
           {kind === "beats" && <p className="admin-hint">Every beat is $24.99 CAD.</p>}
-          <button className="auth-submit" type="submit">{pending ? status || "Please wait…" : track ? "Save changes" : "Upload track"}</button>
+          <button className="auth-submit" type="submit" disabled={coverLoading}>{coverLoading ? "Opening cover…" : pending ? status || "Please wait…" : track ? "Save changes" : "Upload track"}</button>
         </fieldset>
         {error && <p className="auth-error" role="alert">{error}</p>}
         {!pending && status && <p className="auth-message" role="status">{status}</p>}

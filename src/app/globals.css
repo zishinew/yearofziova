@@ -130,6 +130,15 @@ body:has(.auth-dialog[open]) .account-content { filter: blur(8px); }
 .admin-row-actions { display: flex; gap: 16px; font-size: 11px; }
 .admin-row-actions button { cursor: pointer; }
 .admin-row-actions button:disabled { opacity: 0.4; cursor: default; }
+.cover-crop-controls { display: grid; gap: 12px; margin-top: 16px; }
+.cover-crop-window { position: relative; width: min(100%, 280px); aspect-ratio: 1; overflow: hidden; background: #f4f4f4; touch-action: none; cursor: grab; border: 1px solid #ddd; }
+.cover-crop-window:active { cursor: grabbing; }
+.cover-crop-window:focus-visible { outline: 1px solid #888; outline-offset: 3px; }
+.cover-crop-window img { position: absolute; max-width: none; pointer-events: none; user-select: none; }
+.cover-crop-grid { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to right, transparent calc(100% / 3 - .5px), #ffffff60 calc(100% / 3 - .5px), #ffffff60 calc(100% / 3 + .5px), transparent calc(100% / 3 + .5px), transparent calc(200% / 3 - .5px), #ffffff60 calc(200% / 3 - .5px), #ffffff60 calc(200% / 3 + .5px), transparent calc(200% / 3 + .5px)), linear-gradient(to bottom, transparent calc(100% / 3 - .5px), #ffffff60 calc(100% / 3 - .5px), #ffffff60 calc(100% / 3 + .5px), transparent calc(100% / 3 + .5px), transparent calc(200% / 3 - .5px), #ffffff60 calc(200% / 3 - .5px), #ffffff60 calc(200% / 3 + .5px), transparent calc(200% / 3 + .5px)); }
+.admin-fields input[type="range"] { padding: 0; border: none; accent-color: #171717; max-width: 280px; }
+.cover-crop-actions { display: flex; flex-wrap: wrap; gap: 20px; font-size: 11px; color: #737373; }
+.cover-crop-actions button { cursor: pointer; }
 @media (max-width: 767px) { .admin-layout { grid-template-columns: 1fr; gap: 48px; } }
 .vault-back { position: absolute; top: 40px; left: clamp(24px, 5vw, 96px); font-size: 12px; display: flex; gap: 12px; align-items: center; cursor: pointer; pointer-events: auto; }
 .ziova-logo { z-index: 60; }
