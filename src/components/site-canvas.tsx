@@ -2,10 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { startTransition, useCallback, useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { PageTransition } from "@/components/page-transition";
 import { useSiteSession } from "@/components/site-session";
-import { PixelLiquidBg } from "@/components/ui/pixel-liquid-bg";
 import { CartButton } from "@/components/shopping-cart";
 import { SoundPlaylist } from "@/components/sound-playlist";
 import { beats, loops, type Beat } from "@/data/beats";
@@ -13,14 +12,9 @@ import { beats, loops, type Beat } from "@/data/beats";
 export function SiteCanvas({ skipLoader = false, beatTracks = beats, loopTracks = loops, catalogError = false }: {
   skipLoader?: boolean; beatTracks?: Beat[]; loopTracks?: Beat[]; catalogError?: boolean;
 }) {
-  const { entered, enter } = useSiteSession();
-  const [canvasReady, setCanvasReady] = useState(false);
+  const { entered, canvasReady } = useSiteSession();
   const [view, setView] = useState<"home" | "beats" | "loops">("home");
   const [phase, setPhase] = useState<"entering" | "center" | "docking" | "settled">(skipLoader || entered ? "settled" : "entering");
-  const handleReady = useCallback(() => {
-    setCanvasReady(true);
-    enter();
-  }, [enter]);
   const loading = phase !== "settled";
   const navigate = (next: typeof view) => startTransition(() => setView(next));
 
@@ -32,9 +26,6 @@ export function SiteCanvas({ skipLoader = false, beatTracks = beats, loopTracks 
 
   return (
     <div id="top">
-      <div className="site-fluid" aria-hidden="true">
-        <PixelLiquidBg pixelSize={8} onReady={handleReady} />
-      </div>
       <PageTransition view={view}>
         <main
           aria-busy={loading}

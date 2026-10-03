@@ -12,12 +12,7 @@ body {
   font-family: "Courier New", Courier, monospace;
 }
 
-::view-transition { pointer-events: none; }
-::view-transition-old(root), ::view-transition-new(root) { animation: none; }
-::view-transition-group(.page-motion) { animation-duration: 320ms; animation-timing-function: ease; }
-::view-transition-old(.page-motion) { animation: page-leave 160ms ease-in both; }
-::view-transition-new(.page-motion) { animation: page-arrive 320ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both; }
-@keyframes page-leave { to { opacity: 0; transform: translateY(-8px); } }
+.page-transition { animation: page-arrive 320ms cubic-bezier(0.22, 1, 0.36, 1); }
 @keyframes page-arrive { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
 .loader-screen {
@@ -49,7 +44,7 @@ body {
   will-change: transform;
 }
 
-.site-fluid { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: 0.32; }
+.site-fluid { position: fixed; inset: 0; width: 100vw; height: 100dvh; z-index: -1; pointer-events: none; opacity: 0.32; }
 .vault-landing { min-height: 100dvh; display: grid; place-items: center; }
 .vault-choices { display: flex; align-items: center; justify-content: center; gap: clamp(64px, 14vw, 220px); padding: 24px; }
 .vault-choices button { cursor: pointer; font-family: "Courier New", monospace; font-size: 16px; padding: 24px 12px; transition: color 180ms, transform 180ms; }
@@ -66,6 +61,7 @@ body {
 .auth-dialog { position: fixed; inset: 0; margin: auto; width: min(420px, calc(100% - 32px)); max-height: calc(100dvh - 48px); padding: 40px 32px 32px; border: 1px solid #e5e5e5; border-radius: 8px; background: rgba(255,255,255,0.96); color: #171717; overflow-y: auto; }
 .auth-dialog[open] { animation: page-arrive 260ms cubic-bezier(0.22,1,0.36,1); }
 .auth-dialog::backdrop { background: rgba(255,255,255,0.3); }
+body:has(.auth-dialog[open]) .site-fluid,
 body:has(.auth-dialog[open]) #top,
 body:has(.auth-dialog[open]) .account-header,
 body:has(.auth-dialog[open]) .account-content { filter: blur(8px); }
@@ -222,7 +218,7 @@ body:has(.auth-dialog[open]) .account-content { filter: blur(8px); }
 
 @media (prefers-reduced-motion: reduce) {
   .auth-dialog[open] { animation: none; }
-  ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) { animation-duration: 0s !important; animation-delay: 0s !important; }
+  .page-transition { animation: none; }
   .vault-choices button { transition: color 180ms; }
   .vault-choices button:hover { transform: none; }
   .playlist-details { animation: none; }

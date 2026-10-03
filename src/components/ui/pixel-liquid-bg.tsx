@@ -325,8 +325,11 @@ class CommonGL {
   resize() {
     if (!this.container) return;
     const r = this.container.getBoundingClientRect();
-    this.width = Math.max(1, Math.floor(r.width));
-    this.height = Math.max(1, Math.floor(r.height));
+    const width = Math.max(1, Math.floor(r.width));
+    const height = Math.max(1, Math.floor(r.height));
+    if (width === this.width && height === this.height) return;
+    this.width = width;
+    this.height = height;
     this.renderer?.setSize(this.width, this.height, false);
   }
 
@@ -940,7 +943,10 @@ export function PixelLiquidBg({
       : null;
 
     const handleResize = () => {
+      const previousWidth = gl.width;
+      const previousHeight = gl.height;
       gl.resize();
+      if (gl.width === previousWidth && gl.height === previousHeight) return;
       sim.resize();
       (outputUniforms.uRes.value as THREE.Vector2).set(gl.width, gl.height);
     };
