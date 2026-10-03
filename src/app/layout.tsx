@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SiteSession } from "@/components/site-session";
+import { AudioPlayer } from "@/components/audio-player";
 import { ShoppingCart } from "@/components/shopping-cart";
 import "./globals.css";
 
@@ -14,7 +15,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode; auth?: React.ReactNode }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body><SiteSession><ShoppingCart>{children}{auth}</ShoppingCart></SiteSession></body>
+      <body><SiteSession><ShoppingCart><AudioPlayer>{children}{auth}</AudioPlayer></ShoppingCart></SiteSession></body>
     </html>
   );
 }
