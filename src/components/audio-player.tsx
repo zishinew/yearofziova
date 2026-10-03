@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { PlaybackIcon } from "@/components/playback-icon";
 import { createContext, useContext, useRef, useState, type ReactNode } from "react";
 import type { Beat } from "@/data/beats";
 
@@ -83,7 +84,7 @@ export function AudioPlayer({ children }: { children: ReactNode }) {
         <div><p className="playbar-title">{track.title}</p><span>ziova</span></div>
       </div>
       <div className="playbar-transport">
-        <button type="button" className="playbar-toggle" aria-label={`${playing ? "Pause" : "Play"} preview`} onClick={toggle}><span aria-hidden="true">{playing ? "Ⅱ" : "▶"}</span></button>
+        <button type="button" className="playbar-toggle" aria-label={`${playing ? "Pause" : "Play"} preview`} onClick={toggle}><PlaybackIcon playing={playing} size={18} /></button>
         <span className="playbar-time">{time(position)}</span>
         <input type="range" aria-label="Seek preview" aria-valuetext={`${time(position)} of ${time(shownLength)}`} min={0} max={length || 1} step={0.1} value={Math.min(position, length || 1)} disabled={!length} onChange={event => {
           const next = Number(event.target.value);

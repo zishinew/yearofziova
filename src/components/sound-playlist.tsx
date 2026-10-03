@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { PlaybackIcon } from "@/components/playback-icon";
 import { usePlayback } from "@/components/audio-player";
 import { BEAT_PRICE_CAD, type Beat } from "@/data/beats";
 import { useCart } from "@/components/shopping-cart";
@@ -17,7 +18,7 @@ function TrackRow({ track, kind }: { track: Beat; kind: "beats" | "loops" }) {
   return <article className={`playlist-track playlist-compact-row ${playing ? "playlist-track-playing" : ""}`}>
     <button type="button" className="playlist-summary" onClick={() => playback.play(track)} disabled={!track.audioUrl} aria-label={`${playing ? "Pause" : "Play"} ${track.title}`} aria-pressed={playing}>
       <span className="playlist-identity">
-        <span className="playlist-art">{track.coverArt ? <Image src={track.coverArt} alt="" width={48} height={48} className="playlist-cover" /> : <span className="playlist-cover playlist-cover-empty" aria-hidden="true">♫</span>}<span className="playlist-play-icon" aria-hidden="true">{playing ? "Ⅱ" : "▶"}</span></span>
+        <span className="playlist-art">{track.coverArt ? <Image src={track.coverArt} alt="" width={48} height={48} className="playlist-cover" /> : <span className="playlist-cover playlist-cover-empty" aria-hidden="true">♫</span>}<span className="playlist-play-icon" aria-hidden="true"><PlaybackIcon playing={playing} /></span></span>
         <span className="playlist-name"><span className="playlist-title">{track.title}</span>{track.notes?.length ? <span className="playlist-inline-notes" title={track.notes.join(" · ")}>{track.notes.join(" · ")}</span> : null}</span>
       </span>
       <span className="track-tags playlist-inline-tags" aria-label="Tags" title={track.tags?.join(" · ")}>{track.tags?.map((tag, i) => <span key={`${tag}-${i}`}>{tag}</span>)}</span>
