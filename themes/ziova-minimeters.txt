@@ -1,0 +1,51 @@
+## ziova — white / hot pink
+## RGB and RGBA values use a 0–255 range.
+
+credit: "ziova / @yearofziova — white + hot pink"
+
+## Primary Colors
+color: 255,45,141
+selection: 255,45,141
+text: 23,23,23
+accent: 255,45,141
+bg: 255,255,255
+bgaccent: 245,245,245
+
+## Waveform
+waveform: 255,45,141,255
+rgb_waveform_opacity_with_history: 170
+history_low: 255,180,214,255
+history_mid: 255,110,177,255
+history_high: 255,45,141,255
+waveform_low: 255,180,214
+waveform_mid: 255,110,177
+waveform_high: 255,45,141
+
+## Oscilloscope
+oscilloscope_main: 255,45,141
+oscilloscope_bg: 255,210,230
+
+## Stereometer
+stereometer: 255,45,141
+stereometer_low: 255,180,214
+stereometer_mid: 255,110,177
+stereometer_high: 255,45,141
+
+## Spectrum Analyzer
+spectrum_analyzer_main: 255,45,141
+spectrum_analyzer_secondary: 255,180,214
+spectrum_analyzer_frequency_lines: 225,225,225
+spectrum_analyzer_reference_line: 180,180,180
+spectrum_analyzer_threshold_line: 255,45,141
+
+## Monotone pink keeps the spectrogram and bars simple.
+spectrogram_main: 255,45,141
+color_bars_main: 255,45,141
+color_bars_opacity: 255
+
+## Loudness Meter
+loudness_main: 255,45,141
+loudness_text: 23,23,23
+
+## Audio device error
+error_bar: 255,45,141
