@@ -9,3 +9,9 @@ export type AdminTrack = {
   genre: string; musical_key: string; description: string; moods: string[]; tags: string[]; notes: string[];
   preview_path: string; cover_path: string | null; published: boolean;
 };
+
+export function bpmFromFilename(filename: string): number | null {
+  const matches = [...filename.matchAll(/(?:^|[^\d.])(\d{1,3})[\s_-]*bpm(?=$|[^a-z0-9])/gi)];
+  const values = new Set(matches.map(match => Number(match[1])).filter(bpm => bpm >= 1 && bpm <= 400));
+  return values.size === 1 ? [...values][0] : null;
+}

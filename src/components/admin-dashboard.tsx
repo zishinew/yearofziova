@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import { saveTrack, setTrackPublished } from "@/app/admin/actions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
-import { audioTypes, coverTypes, type AdminTrack } from "@/lib/track-upload";
+import { audioTypes, coverTypes, bpmFromFilename, type AdminTrack } from "@/lib/track-upload";
 import { CoverCropper, croppedCover, type CoverSelection } from "@/components/cover-cropper";
 
 function list(value: FormDataEntryValue | null, separator: string) {
@@ -43,6 +43,21 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
   const [error, setError] = useState("");
   const [coverCrop, setCoverCrop] = useState<CoverSelection | null>(null);
   const [coverLoading, setCoverLoading] = useState(false);
+  const autoBpm = useRef<string | null>(null);
+
+  function readFilename(file?: File, preview = false) {
+    if (!file || !audioTypes[file.name.split(".").pop()?.toLowerCase() || ""]) return;
+    const input = form.current?.elements.namedItem("bpm");
+    if (!(input instanceof HTMLInputElement) || (input.value && input.value !== autoBpm.current)) return;
+    const bpm = bpmFromFilename(file.name);
+    if (bpm !== null) {
+      input.value = String(bpm);
+      autoBpm.current = input.value;
+    } else if (preview && autoBpm.current !== null) {
+      input.value = "";
+      autoBpm.current = null;
+    }
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -91,6 +106,7 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
         const result = await saveTrack(payload, download?.path, download?.file.name.replace(/[^\w. ()-]/g, "_").slice(0, 200));
         if (result.error) throw new Error(result.error);
         form.current?.reset();
+        autoBpm.current = null;
         setCoverCrop(null);
         setStatus(payload.published ? "Published. Your track is now in the catalog." : "Draft saved.");
         onSaved();
@@ -112,16 +128,16 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
         <fieldset disabled={pending} className="admin-fields">
           <label>Title<input name="title" required maxLength={120} defaultValue={track?.title} /></label>
           <div className="admin-field-pair">
-            <label>BPM<input name="bpm" type="number" required min={1} max={400} step={1} defaultValue={track?.bpm} /></label>
+            <label>BPM<span className="admin-hint">Auto from filename, e.g. 140bpm · editable</span><input name="bpm" type="number" required min={1} max={400} step={1} defaultValue={track?.bpm} onChange={() => { autoBpm.current = null; }} /></label>
             <label>Length in seconds<input name="duration" type="number" min={1} max={86400} step={1} placeholder="Auto from preview" defaultValue={track?.duration_seconds ?? ""} /></label>
           </div>
           <label>Tags<span className="admin-hint">Separate with commas</span><input name="tags" maxLength={2400} defaultValue={track?.tags.join(", ")} /></label>
           <label>Additional notes<span className="admin-hint">One per line</span><textarea name="notes" maxLength={15000} rows={2} defaultValue={track?.notes.join("\n")} /></label>
           <label>Preview audio<span className="admin-hint">Public · MP3, WAV, OGG, M4A or FLAC · up to 50 MB{track ? " · leave empty to keep current" : ""}</span>
-            <input name="preview" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac" required={!track} /></label>
+            <input name="preview" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac" required={!track} onChange={event => readFilename(event.target.files?.[0], true)} /></label>
           <CoverCropper value={coverCrop} onChange={setCoverCrop} onLoading={setCoverLoading} existingCover={Boolean(track?.cover_path)} />
           <label>Purchased download<span className="admin-hint">Private · audio or ZIP · optional · up to 50 MB · existing file stays unless replaced</span>
-            <input name="download" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac,.zip" /></label>
+            <input name="download" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac,.zip" onChange={event => readFilename(event.target.files?.[0])} /></label>
           <label className="admin-checkbox"><input name="published" type="checkbox" defaultChecked={track?.published ?? true} />Publish in {kind === "beats" ? "Beat Vault" : "Loop Kit"}</label>
           {kind === "beats" && <p className="admin-hint">Every beat is $24.99 CAD.</p>}
           <button className="auth-submit" type="submit" disabled={coverLoading}>{coverLoading ? "Opening cover…" : pending ? status || "Please wait…" : track ? "Save changes" : "Upload track"}</button>
