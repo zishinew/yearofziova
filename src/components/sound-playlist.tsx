@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { PlaybackIcon } from "@/components/playback-icon";
 import { usePlayback } from "@/components/audio-player";
-import { BEAT_PRICE_CAD, type Beat } from "@/data/beats";
+import { type Beat } from "@/data/beats";
 import { useCart } from "@/components/shopping-cart";
 
 function duration(seconds?: number) {
@@ -25,7 +25,7 @@ function TrackRow({ track, kind }: { track: Beat; kind: "beats" | "loops" }) {
       <span className="playlist-number"><span className="sr-only">BPM: </span>{track.bpm}</span>
       <span className="playlist-number"><span className="sr-only">Duration: </span>{duration(track.durationSeconds)}</span>
     </button>
-    {kind === "beats" ? <button type="button" className="track-add" title={`$${BEAT_PRICE_CAD.toFixed(2)} CAD`} aria-label={added ? `${track.title} added to cart` : `Add ${track.title} to cart for $${BEAT_PRICE_CAD.toFixed(2)} CAD`} onClick={() => cart.add(track)} disabled={added}>{added ? "Added" : "Add to cart"}</button> : <a className="track-loop-inquiry" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer">Inquire ↗</a>}
+    {kind === "beats" ? <button type="button" className="track-add" aria-label={added ? `Change lease for ${track.title}` : `Choose lease for ${track.title}`} onClick={() => cart.add(track)}>{added ? "Change lease" : "Add to cart"}</button> : <a className="track-loop-inquiry" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer">Inquire ↗</a>}
   </article>;
 }
 export function SoundPlaylist({ kind, tracks, loadError = false }: { kind: "beats" | "loops"; tracks: Beat[]; loadError?: boolean }) {

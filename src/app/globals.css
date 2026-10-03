@@ -313,3 +313,14 @@ body:has(.auth-dialog[open]) .playbar { filter: blur(8px); }
 .playlist-compact-row .track-add { justify-self: end; white-space: nowrap; font-size: 11px; }
 .track-loop-inquiry { justify-self: end; font-size: 11px; white-space: nowrap; }
 @media (max-width: 639px) { .playlist-compact-row, .playlist-table .playlist-columns { gap: 12px; min-width: 580px; } }
+
+.lease-track-title { margin-top: 20px; font-size: 13px; overflow-wrap: anywhere; color: #737373; }
+.lease-options { margin-top: 20px; border: 0; display: grid; gap: 10px; }
+.lease-option { display: flex; align-items: center; gap: 12px; padding: 16px; border: 1px solid #17171715; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.lease-option:has(input:checked) { border-color: #17171760; }
+.lease-option input { accent-color: #171717; }
+.lease-option > span:last-child { margin-left: auto; white-space: nowrap; color: #737373; }
+.lease-confirm { width: 100%; margin-top: 20px; padding: 14px; background: #171717; color: white; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.lease-exclusive { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid #17171710; font-size: 11px; color: #737373; }
+.lease-exclusive:hover { color: #e8227a; }
+.cart-items li .cart-change-lease { margin-top: 10px; color: #525252; }
