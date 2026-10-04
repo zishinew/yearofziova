@@ -131,7 +131,7 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
           description: track?.description || "",
           moods: track?.moods || [], tags: list(values.get("tags"), ","), notes: [...new Set([...list(values.get("notes"), "\n"), ...parsed.notes])],
           preview_path: previewPath, cover_path: kind === "beats" ? cover?.path || track?.cover_path || null : null,
-          published: track?.published ?? false,
+          published: track?.published ?? true,
         };
         const leases = ([{lease:"mp3" as const, upload:mp3}, {lease:"wav" as const, upload:wav}]).flatMap(({lease,upload})=>upload ? [{lease,path:upload.path,name:upload.file.name.replace(/[^\w. ()-]/g,"_").slice(0,200)}] : []);
         const result = await saveTrack(payload, download?.path, download?.file.name.replace(/[^\w. ()-]/g, "_").slice(0, 200), leases);
@@ -175,9 +175,9 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
             <label>WAV lease download<span className="admin-hint">Private · up to 50 MB · creates a 320 kbps MP3 automatically · leave empty to keep current</span><input name="wav" type="file" accept=".wav" onChange={event=>{ setHasWav(Boolean(event.target.files?.[0])); setWavFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0]); }} /></label>
           </> : <label>Purchased download<span className="admin-hint">Private · audio or ZIP · optional · up to 50 MB · existing file stays unless replaced</span>
             <input name="download" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac,.zip" onChange={event => readFilename(event.target.files?.[0])} /></label>}
-          {!track && <p className="admin-hint">Uploads save as drafts. Use Publish in your catalog when ready.</p>}
+          {!track && <p className="admin-hint">Uploading publishes this track in your catalog.</p>}
           {kind === "beats" && <p className="admin-hint">MP3 $24.99 CAD · WAV $34.99 CAD. Upload a WAV to enable both leases.</p>}
-          <button className="auth-submit" type="submit" disabled={coverLoading}>{coverLoading ? "Opening cover…" : pending ? status || "Please wait…" : track ? "Save changes" : "Upload draft"}</button>
+          <button className="auth-submit" type="submit" disabled={coverLoading}>{coverLoading ? "Opening cover…" : pending ? status || "Please wait…" : track ? "Save changes" : "Upload & publish"}</button>
         </fieldset>
         {error && <p className="auth-error" role="alert">{error}</p>}
         {!pending && status && <p className="auth-message" role="status">{status}</p>}

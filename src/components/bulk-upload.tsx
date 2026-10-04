@@ -48,7 +48,7 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (running.current || !remaining.length || invalid) return;
-    const published = false;
+    const published = true;
     running.current = true; stop.current = false; setBusy(true); onBusy(true); setSummary("");
     let succeeded = 0;
     let failed = 0;
@@ -81,7 +81,7 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
           <label>Choose a folder<input type="file" multiple {...{ webkitdirectory: "" }} onChange={event => { choose(event.target.files); event.target.value = ""; }} /></label>
           <label>Or select multiple files<input type="file" multiple accept={kind === "beats" ? ".wav,.jpg,.jpeg,.png,.webp" : ".mp3,.wav,.ogg,.m4a,.flac,.zip,.jpg,.jpeg,.png,.webp"} onChange={event => { choose(event.target.files); event.target.value = ""; }} /></label>
         </div>
-        {entries.length > 0 && <p className="admin-hint">Uploads save as drafts. Use Publish in your catalog when each item is ready.</p>}
+        {entries.length > 0 && <p className="admin-hint">Uploading publishes these tracks in your catalog.</p>}
       </fieldset>
       {entries.length > 0 && <ul className="bulk-queue" aria-label="Upload queue">
         {entries.map(entry => <li key={entry.id} className={`bulk-entry bulk-entry-${entry.status}`}>
@@ -99,7 +99,7 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
         </li>)}
       </ul>}
       <div className="bulk-upload-actions">
-        {remaining.length > 0 && <button className="auth-submit" type="submit" disabled={busy || invalid}>{busy ? "Uploading…" : `Upload ${remaining.length} ${kind} as drafts`}</button>}
+        {remaining.length > 0 && <button className="auth-submit" type="submit" disabled={busy || invalid}>{busy ? "Uploading…" : `Upload & publish ${remaining.length} ${kind}`}</button>}
         {busy && <button className="auth-text-link" type="button" onClick={() => { stop.current = true; setSummary("Stopping after the current file finishes…"); }}>Stop after current file</button>}
         {!busy && entries.length > 0 && <button className="auth-text-link" type="button" onClick={() => { setEntries([]); setSummary(""); }}>Clear queue</button>}
       </div>
