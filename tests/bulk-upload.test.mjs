@@ -69,6 +69,7 @@ test("bulk WAV upload keeps lease files private, uploads preview separately and 
   assert.ok(f.uploads.filter(upload => ["beat.mp3", "beat.wav"].includes(upload.file.name)).every(upload => upload.bucket === "purchased-beats"));
   const [track, download, , leases] = f.saves[0];
   assert.equal(track.title, "beat"); assert.equal(track.duration_seconds, 137);
+  assert.deepEqual(track.tags, ["rage"]); assert.deepEqual(track.notes, ["note"]);
   assert.equal(download, undefined);
   assert.deepEqual(leases.map(lease => lease.lease), ["mp3", "wav"]);
   assert.deepEqual(f.removals, []);

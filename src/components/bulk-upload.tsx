@@ -4,7 +4,21 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { planBulkUpload } from "@/lib/bulk-upload-plan";
 import { bulkTrackError, uploadBulkTrack, type BulkTrack } from "@/lib/bulk-track-upload";
 
-type Entry = BulkTrack & { status: "queued" | "uploading" | "done" | "error"; message: string };
+type Entry = BulkTrack & { tags: string; notes: string; status: "queued" | "uploading" | "done" | "error"; message: string };
+function entryDetails(entry: Entry) {
+  return {
+    tags: entry.tags.split(",").map(tag => tag.trim()).filter(Boolean),
+    notes: entry.notes.split("\n").map(note => note.trim()).filter(Boolean),
+  };
+}
+function entryError(entry: Entry, kind: "beats" | "loops") {
+  const invalid = bulkTrackError(entry, kind);
+  if (invalid) return invalid;
+  const { tags, notes } = entryDetails(entry);
+  if (tags.length > 30 || tags.some(tag => tag.length > 80)) return "Use up to 30 tags, 80 characters each.";
+  if (notes.length > 30 || notes.some(note => note.length > 500)) return "Use up to 30 notes, 500 characters each.";
+  return null;
+}
 export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loops"; onBusy: (busy: boolean) => void; onCompleted: (count: number, published: boolean) => void }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [busy, setBusy] = useState(false);
@@ -21,25 +35,19 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
   function choose(files: FileList | null) {
     if (!files || running.current) return;
     const planned = planBulkUpload(Array.from(files), kind);
-    setEntries(planned.map(entry => ({ ...entry, id: crypto.randomUUID(), bpm: entry.bpm === null ? "" : String(entry.bpm), status: "queued", message: "" })));
+    setEntries(planned.map(entry => ({ ...entry, id: crypto.randomUUID(), bpm: entry.bpm === null ? "" : String(entry.bpm), tags: "", notes: "", status: "queued", message: "" })));
     setSummary(planned.length ? `${planned.length} ${kind} found. Matching covers and ZIP previews are included; other files are skipped.` : `No ${kind === "beats" ? "WAV files" : "audio or ZIP files"} found.`);
   }
   function update(id: string, patch: Partial<Entry>) {
     setEntries(previous => previous.map(entry => entry.id === id ? { ...entry, ...patch } : entry));
   }
   const remaining = entries.filter(entry => entry.status !== "done");
-  const invalid = remaining.some(entry => bulkTrackError(entry, kind));
+  const invalid = remaining.some(entry => entryError(entry, kind));
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (running.current || !remaining.length || invalid) return;
     const values = new FormData(event.currentTarget);
     const published = values.get("published") === "on";
-    const tags = String(values.get("tags") || "").split(",").map(tag => tag.trim()).filter(Boolean);
-    const notes = String(values.get("notes") || "").split("\n").map(note => note.trim()).filter(Boolean);
-    if (tags.length > 30 || tags.some(tag => tag.length > 80) || notes.length > 30 || notes.some(note => note.length > 500)) {
-      setSummary("Use up to 30 tags (80 characters each) and 30 notes (500 characters each).");
-      return;
-    }
     running.current = true; stop.current = false; setBusy(true); onBusy(true); setSummary("");
     let succeeded = 0;
     let failed = 0;
@@ -48,6 +56,7 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
         if (stop.current) break;
         update(entry.id, { status: "uploading", message: "Preparing…" });
         try {
+          const { tags, notes } = entryDetails(entry);
           await uploadBulkTrack(entry, kind, published, tags, notes, message => update(entry.id, { message }));
           update(entry.id, { status: "done", message: published ? "Uploaded · Published" : "Uploaded · Draft" });
           succeeded++;
@@ -72,8 +81,6 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
           <label>Or select multiple files<input type="file" multiple accept={kind === "beats" ? ".wav,.jpg,.jpeg,.png,.webp" : ".mp3,.wav,.ogg,.m4a,.flac,.zip,.jpg,.jpeg,.png,.webp"} onChange={event => { choose(event.target.files); event.target.value = ""; }} /></label>
         </div>
         {entries.length > 0 && <>
-          <label>Tags for all uploads<input name="tags" maxLength={2400} placeholder="Separate with commas" /></label>
-          <label>Additional notes for all uploads<textarea name="notes" maxLength={15000} rows={2} /></label>
           <label className="admin-checkbox"><input name="published" type="checkbox" defaultChecked />Publish in {kind === "beats" ? "Beat Vault" : "Loop Kit"}</label>
         </>}
       </fieldset>
@@ -82,11 +89,13 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
           <div className="bulk-file-name">{entry.file.webkitRelativePath || entry.file.name}</div>
           <fieldset disabled={busy || entry.status === "done"} className="admin-fields">
             <div className="bulk-entry-fields"><label>Title<input value={entry.title} maxLength={120} onChange={event => update(entry.id, { title: event.target.value, status: "queued", message: "" })} /></label><label>BPM<input type="number" min={1} max={400} step={1} value={entry.bpm} onChange={event => update(entry.id, { bpm: event.target.value, status: "queued", message: "" })} /></label></div>
+            <label>Tags<span className="admin-hint">Separate with commas</span><input value={entry.tags} maxLength={2400} onChange={event => update(entry.id, { tags: event.target.value, status: "queued", message: "" })} /></label>
+            <label>Additional notes<span className="admin-hint">One per line</span><textarea value={entry.notes} maxLength={15000} rows={2} onChange={event => update(entry.id, { notes: event.target.value, status: "queued", message: "" })} /></label>
             <div className="admin-field-pair"><label>Cover art<span className="admin-hint">{entry.cover?.name || "Optional"}</span><input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={event => update(entry.id, { cover: event.target.files?.[0] || null, status: "queued", message: "" })} /></label>
               {kind === "loops" && /\.zip$/i.test(entry.file.name) && <label>Preview audio<span className="admin-hint">{entry.preview?.name || "Required for ZIP kits"}</span><input type="file" accept=".mp3,.wav,.ogg,.m4a,.flac" onChange={event => update(entry.id, { preview: event.target.files?.[0] || null, status: "queued", message: "" })} /></label>}
             </div>
           </fieldset>
-          <div className="bulk-entry-footer"><p className={entry.status === "error" || (entry.status === "queued" && bulkTrackError(entry, kind)) ? "auth-error" : "auth-message"} role="status">{entry.message || bulkTrackError(entry, kind) || "Ready to upload"}</p>{!busy && entry.status !== "done" && <button type="button" className="auth-text-link" onClick={() => setEntries(previous => previous.filter(item => item.id !== entry.id))}>Remove</button>}</div>
+          <div className="bulk-entry-footer"><p className={entry.status === "error" || (entry.status === "queued" && entryError(entry, kind)) ? "auth-error" : "auth-message"} role="status">{entry.message || entryError(entry, kind) || "Ready to upload"}</p>{!busy && entry.status !== "done" && <button type="button" className="auth-text-link" onClick={() => setEntries(previous => previous.filter(item => item.id !== entry.id))}>Remove</button>}</div>
         </li>)}
       </ul>}
       <div className="bulk-upload-actions">
