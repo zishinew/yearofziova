@@ -5,7 +5,7 @@ import Link from "next/link";
 import { SuccessNotification } from "@/components/success-notification";
 import { BulkUpload } from "@/components/bulk-upload";
 import { AdminPreview } from "@/components/admin-preview";
-import { saveTrack, setTrackPublished } from "@/app/admin/actions";
+import { saveTrack, setTrackPublished, deleteTrack } from "@/app/admin/actions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { audioTypes, coverTypes, metadataFromFilename, parseTrackText, type AdminTrack } from "@/lib/track-upload";
 import { CoverCropper, croppedCover, type CoverSelection } from "@/components/cover-cropper";
@@ -187,6 +187,7 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
 }
 
 export function AdminDashboard({ tracks, loadError }: { tracks: AdminTrack[]; loadError: boolean }) {
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [kind, setKind] = useState<"beats" | "loops">("beats");
   const [editing, setEditing] = useState<AdminTrack | null>(null);
   const [bulk, setBulk] = useState(false);
@@ -200,6 +201,18 @@ export function AdminDashboard({ tracks, loadError }: { tracks: AdminTrack[]; lo
     startTransition(async () => {
       const result = await setTrackPublished(track.id, !track.published);
       if (result.error) setError(result.error);
+    });
+  }
+  function remove(track: AdminTrack) {
+    if (pending || bulkBusy || !window.confirm(`Delete “${track.title}”? It will be removed from your catalog. Existing customers will keep their downloads.`)) return;
+    setError(""); setDeleting(track.id);
+    startTransition(async () => {
+      try {
+        const result = await deleteTrack(track.id);
+        if (result.error) setError(result.error);
+        else if (editing?.id === track.id) setEditing(null);
+      } catch { setError("Couldn't delete this track. Please try again."); }
+      finally { setDeleting(null); }
     });
   }
   return <section className="admin-dashboard">
@@ -219,7 +232,8 @@ export function AdminDashboard({ tracks, loadError }: { tracks: AdminTrack[]; lo
             <div><h3>{track.title}</h3><p>{track.bpm} BPM · {track.published ? "Published" : "Draft"}</p></div>
             <div className="admin-row-actions"><button type="button" disabled={bulkBusy} onClick={() => { setBulk(false); setEditing(track); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Edit</button>
               <AdminPreview id={track.id} title={track.title} bpm={track.bpm} previewPath={track.preview_path} coverPath={track.cover_path} />
-              <button type="button" disabled={pending || bulkBusy} onClick={() => toggle(track)}>{track.published ? "Hide" : "Publish"}</button></div>
+              <button type="button" disabled={pending || bulkBusy} onClick={() => toggle(track)}>{track.published ? "Hide" : "Publish"}</button>
+              <button type="button" className="admin-delete" disabled={pending || bulkBusy} onClick={() => remove(track)} aria-label={`Delete ${track.title}`}>{deleting === track.id ? "Deleting…" : "Delete"}</button></div>
           </li>)}</ul>
           {error && <p className="auth-error" role="alert">{error}</p>}
         </section>

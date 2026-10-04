@@ -124,6 +124,9 @@ body:has(.auth-dialog[open]) .account-content { filter: blur(8px); }
 .admin-catalog h3 { font-size: 12px; overflow-wrap: anywhere; }
 .admin-catalog li p { font-size: 10px; color: #888; margin-top: 8px; }
 .admin-row-actions { display: flex; gap: 16px; font-size: 11px; }
+.admin-delete { font-size: 11px; color: #737373; cursor: pointer; }
+.admin-delete:hover { color: #be185d; }
+.admin-delete:disabled { opacity: .4; cursor: default; }
 .admin-row-actions button { cursor: pointer; }
 .admin-row-actions button:disabled { opacity: 0.4; cursor: default; }
 .admin-preview { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; cursor: pointer; color: #737373; }

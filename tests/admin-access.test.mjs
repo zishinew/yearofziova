@@ -31,7 +31,7 @@ test("only an assigned admin can upload and publish; public catalogs exclude dra
       alter table storage.objects enable row level security;
       grant select, insert, update, delete on storage.objects to anon, authenticated;
     `);
-    for (const file of ["20261002224637_customer_downloads.sql", "20261002234529_admin_catalog_uploads.sql", "20261002235432_consolidate_catalog_policies.sql"]) {
+    for (const file of ["20261002224637_customer_downloads.sql", "20261002234529_admin_catalog_uploads.sql", "20261002235432_consolidate_catalog_policies.sql", "20261004160132_archive_catalog_tracks.sql"]) {
       await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8"));
     }
     await db.query("insert into auth.users(id) values ($1),($2)", [owner, customer]);
@@ -70,6 +70,22 @@ test("only an assigned admin can upload and publish; public catalogs exclude dra
     await db.query("update public.catalog_tracks set published=false where id=$1", [beat]);
     await db.exec("reset role; set role anon");
     assert.deepEqual((await db.query("select id from public.catalog_tracks")).rows, [{ id: loop }]);
+
+    // Customers cannot delete listings; admins can remove them without deleting deliverables.
+    await db.exec("reset role");
+    await db.query("insert into public.purchases(user_id,product_id) values ($1,$2)", [customer, loop]);
+    await asUser(customer);
+    assert.equal((await db.query("update public.catalog_tracks set published=false,deleted_at=now() where id=$1 returning id", [loop])).rows.length, 0);
+    await asUser(owner);
+    await db.query("update public.catalog_tracks set published=false,deleted_at=now() where id=$1", [loop]);
+    assert.deepEqual((await db.query("select id from public.catalog_tracks where deleted_at is null")).rows, [{ id: beat }]);
+    assert.equal((await db.query("select * from public.download_products")).rows.length, 2);
+    await assert.rejects(db.query("update public.catalog_tracks set published=true where id=$1", [loop]), /deleted_tracks_not_published/);
+    await asUser(customer);
+    assert.equal((await db.query("select * from public.download_products")).rows.length, 1);
+    assert.equal((await db.query("select * from storage.objects where bucket_id='purchased-beats'")).rows.length, 1);
+    await db.exec("reset role; set role anon");
+    assert.equal((await db.query("select * from public.catalog_tracks")).rows.length, 0);
 
     // Revoking membership blocks an existing session immediately.
     await db.exec("reset role");

@@ -13,6 +13,6 @@ export default async function AdminPage() {
     const result = client ? await client.auth.getUser() : null;
     redirect(result?.data.user ? "/account" : "/login");
   }
-  const { data, error } = await session.supabase.from("catalog_tracks").select("*").order("created_at", { ascending: false });
+  const { data, error } = await session.supabase.from("catalog_tracks").select("*").is("deleted_at", null).order("created_at", { ascending: false });
   return <AccountShell><AdminDashboard tracks={data || []} loadError={Boolean(error)} /></AccountShell>;
 }

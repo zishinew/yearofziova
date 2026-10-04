@@ -47,8 +47,22 @@ export async function saveTrack(track: AdminTrack, downloadPath?: string, downlo
 export async function setTrackPublished(id: string, published: boolean): Promise<{ error?: string }> {
   const session = await getAdminSession();
   if (!session || !UUID.test(id) || typeof published !== "boolean") return { error: "Admin access required." };
-  const { data, error } = await session.supabase.from("catalog_tracks").update({ published, updated_at: new Date().toISOString() }).eq("id", id).select("id").single();
+  const { data, error } = await session.supabase.from("catalog_tracks").update({ published, updated_at: new Date().toISOString() }).eq("id", id).is("deleted_at", null).select("id").single();
   if (error || !data) return { error: "Couldn't update this track." };
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return {};
+}
+
+export async function deleteTrack(id: string): Promise<{ error?: string }> {
+  const session = await getAdminSession();
+  if (!session || !UUID.test(id)) return { error: "Admin access required." };
+  const now = new Date().toISOString();
+  // Retain deliverables and purchase records so existing buyers can redownload.
+  const { data, error } = await session.supabase.from("catalog_tracks")
+    .update({ published: false, deleted_at: now, updated_at: now })
+    .eq("id", id).is("deleted_at", null).select("id").single();
+  if (error || !data) return { error: "Couldn't delete this track. Please try again." };
   revalidatePath("/");
   revalidatePath("/admin");
   return {};
