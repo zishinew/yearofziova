@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { planBulkUpload } from "@/lib/bulk-upload-plan";
 import { bulkTrackError, uploadBulkTrack, type BulkTrack } from "@/lib/bulk-track-upload";
 import { AdminPreview } from "@/components/admin-preview";
+import { parseTrackText } from "@/lib/track-upload";
 
 type Entry = BulkTrack & { tags: string; notes: string; status: "queued" | "uploading" | "done" | "error"; message: string };
 function entryDetails(entry: Entry) {
@@ -36,8 +37,8 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
   function choose(files: FileList | null) {
     if (!files || running.current) return;
     const planned = planBulkUpload(Array.from(files), kind);
-    setEntries(planned.map(entry => ({ ...entry, id: crypto.randomUUID(), bpm: entry.bpm === null ? "" : String(entry.bpm), tags: "", notes: "", status: "queued", message: "" })));
-    setSummary(planned.length ? `${planned.length} ${kind} found. Matching covers and ZIP previews are included; other files are skipped.` : `No ${kind === "beats" ? "WAV files" : "audio or ZIP files"} found.`);
+    setEntries(planned.map(entry => ({ ...entry, id: crypto.randomUUID(), bpm: entry.bpm === null ? "" : String(entry.bpm), tags: "", notes: entry.notes.join("\n"), status: "queued", message: "" })));
+    setSummary(planned.length ? `${planned.length} ${kind} found. ${kind === "beats" ? "Matching covers" : "Matching ZIP previews"} are included; other files are skipped.` : `No ${kind === "beats" ? "WAV files" : "audio or ZIP files"} found.`);
   }
   function update(id: string, patch: Partial<Entry>) {
     setEntries(previous => previous.map(entry => entry.id === id ? { ...entry, ...patch } : entry));
@@ -47,8 +48,7 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (running.current || !remaining.length || invalid) return;
-    const values = new FormData(event.currentTarget);
-    const published = values.get("published") === "on";
+    const published = false;
     running.current = true; stop.current = false; setBusy(true); onBusy(true); setSummary("");
     let succeeded = 0;
     let failed = 0;
@@ -74,26 +74,24 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
   }
   return <section className="admin-bulk">
     <h2>Bulk upload {kind}</h2>
-    <p className="admin-hint">{kind === "beats" ? "Choose a folder of WAVs. Each becomes a beat with an automatic MP3 and 30-second preview." : "Each audio file becomes a loop. ZIP kits use matching preview audio, e.g. kit.zip + kit-preview.mp3."} Titles and BPM are inferred from filenames. Covers match the filename or cover.jpg in the same folder.</p>
-    <form onSubmit={submit}>
+    <p className="admin-hint">{kind === "beats" ? "Choose a folder of WAVs. Each becomes a beat with an automatic MP3 and 30-second preview. Covers match the filename or cover.jpg in the same folder." : "Each audio file becomes a loop. ZIP kits use matching preview audio, e.g. kit.zip + kit-preview.mp3."} Titles and BPM are inferred from filenames. Detuning is added to notes automatically.</p>
+    <form onSubmit={submit} onKeyDown={event => { if (event.key === "Enter" && event.target instanceof HTMLInputElement && event.target.type !== "file") event.preventDefault(); }}>
       <fieldset disabled={busy} className="admin-fields">
         <div className="admin-field-pair">
           <label>Choose a folder<input type="file" multiple {...{ webkitdirectory: "" }} onChange={event => { choose(event.target.files); event.target.value = ""; }} /></label>
           <label>Or select multiple files<input type="file" multiple accept={kind === "beats" ? ".wav,.jpg,.jpeg,.png,.webp" : ".mp3,.wav,.ogg,.m4a,.flac,.zip,.jpg,.jpeg,.png,.webp"} onChange={event => { choose(event.target.files); event.target.value = ""; }} /></label>
         </div>
-        {entries.length > 0 && <>
-          <label className="admin-checkbox"><input name="published" type="checkbox" defaultChecked />Publish in {kind === "beats" ? "Beat Vault" : "Loop Kit"}</label>
-        </>}
+        {entries.length > 0 && <p className="admin-hint">Uploads save as drafts. Use Publish in your catalog when each item is ready.</p>}
       </fieldset>
       {entries.length > 0 && <ul className="bulk-queue" aria-label="Upload queue">
         {entries.map(entry => <li key={entry.id} className={`bulk-entry bulk-entry-${entry.status}`}>
           <div className="bulk-file-name">{entry.file.webkitRelativePath || entry.file.name}</div>
           <AdminPreview id={`admin-upload-${entry.id}`} title={entry.title} bpm={Number(entry.bpm)} file={kind === "beats" ? entry.file : entry.preview} />
           <fieldset disabled={busy || entry.status === "done"} className="admin-fields">
-            <div className="bulk-entry-fields"><label>Title<input value={entry.title} maxLength={120} onChange={event => update(entry.id, { title: event.target.value, status: "queued", message: "" })} /></label><label>BPM<input type="number" min={1} max={400} step={1} value={entry.bpm} onChange={event => update(entry.id, { bpm: event.target.value, status: "queued", message: "" })} /></label></div>
+            <div className="bulk-entry-fields"><label>Title<input value={entry.title} maxLength={120} onChange={event => update(entry.id, { title: event.target.value, status: "queued", message: "" })} onBlur={() => { const parsed = parseTrackText(entry.title); update(entry.id, { title: parsed.title, notes: [...new Set([...entry.notes.split("\n").filter(Boolean), ...parsed.notes])].join("\n") }); }} /></label><label>BPM<input type="number" min={1} max={400} step={1} value={entry.bpm} onChange={event => update(entry.id, { bpm: event.target.value, status: "queued", message: "" })} /></label></div>
             <label>Tags<span className="admin-hint">Separate with commas</span><input value={entry.tags} maxLength={2400} onChange={event => update(entry.id, { tags: event.target.value, status: "queued", message: "" })} /></label>
             <label>Additional notes<span className="admin-hint">One per line</span><textarea value={entry.notes} maxLength={15000} rows={2} onChange={event => update(entry.id, { notes: event.target.value, status: "queued", message: "" })} /></label>
-            <div className="admin-field-pair"><label>Cover art<span className="admin-hint">{entry.cover?.name || "Optional"}</span><input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={event => update(entry.id, { cover: event.target.files?.[0] || null, status: "queued", message: "" })} /></label>
+            <div className="admin-field-pair">{kind === "beats" && <label>Cover art<span className="admin-hint">{entry.cover?.name || "Optional"}</span><input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={event => update(entry.id, { cover: event.target.files?.[0] || null, status: "queued", message: "" })} /></label>}
               {kind === "loops" && /\.zip$/i.test(entry.file.name) && <label>Preview audio<span className="admin-hint">{entry.preview?.name || "Required for ZIP kits"}</span><input type="file" accept=".mp3,.wav,.ogg,.m4a,.flac" onChange={event => update(entry.id, { preview: event.target.files?.[0] || null, status: "queued", message: "" })} /></label>}
             </div>
           </fieldset>
@@ -101,7 +99,7 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
         </li>)}
       </ul>}
       <div className="bulk-upload-actions">
-        {remaining.length > 0 && <button className="auth-submit" type="submit" disabled={busy || invalid}>{busy ? "Uploading…" : `Upload ${remaining.length} ${kind}`}</button>}
+        {remaining.length > 0 && <button className="auth-submit" type="submit" disabled={busy || invalid}>{busy ? "Uploading…" : `Upload ${remaining.length} ${kind} as drafts`}</button>}
         {busy && <button className="auth-text-link" type="button" onClick={() => { stop.current = true; setSummary("Stopping after the current file finishes…"); }}>Stop after current file</button>}
         {!busy && entries.length > 0 && <button className="auth-text-link" type="button" onClick={() => { setEntries([]); setSummary(""); }}>Clear queue</button>}
       </div>

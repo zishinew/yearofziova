@@ -18,7 +18,7 @@ export async function getCatalog(): Promise<{ beats: Beat[]; loops: Beat[]; erro
     genre: track.genre, key: track.musical_key, description: track.description,
     moods: track.moods, tags: track.tags, notes: track.notes,
     audioUrl: client.storage.from("track-previews").getPublicUrl(track.preview_path).data.publicUrl,
-    coverArt: track.cover_path ? client.storage.from("track-covers").getPublicUrl(track.cover_path).data.publicUrl : undefined,
+    coverArt: track.kind === "beats" && track.cover_path ? client.storage.from("track-covers").getPublicUrl(track.cover_path).data.publicUrl : undefined,
   }));
   return { beats: [...beats, ...tracks.filter(t => t.kind === "beats")], loops: [...loops, ...tracks.filter(t => t.kind === "loops")] };
 }

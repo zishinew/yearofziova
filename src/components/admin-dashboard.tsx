@@ -7,7 +7,7 @@ import { BulkUpload } from "@/components/bulk-upload";
 import { AdminPreview } from "@/components/admin-preview";
 import { saveTrack, setTrackPublished } from "@/app/admin/actions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
-import { audioTypes, coverTypes, bpmFromFilename, type AdminTrack } from "@/lib/track-upload";
+import { audioTypes, coverTypes, metadataFromFilename, parseTrackText, type AdminTrack } from "@/lib/track-upload";
 import { CoverCropper, croppedCover, type CoverSelection } from "@/components/cover-cropper";
 
 function list(value: FormDataEntryValue | null, separator: string) {
@@ -52,12 +52,21 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
   const previewId = useId();
   const [coverLoading, setCoverLoading] = useState(false);
   const autoBpm = useRef<string | null>(null);
+  const autoTitle = useRef<string | null>(null);
 
   function readFilename(file?: File, preview = false) {
     if (!file || !audioTypes[file.name.split(".").pop()?.toLowerCase() || ""]) return;
+    const metadata = metadataFromFilename(file.name);
+    const title = form.current?.elements.namedItem("title");
+    const notes = form.current?.elements.namedItem("notes");
+    if (title instanceof HTMLInputElement && (!title.value || title.value === autoTitle.current)) {
+      title.value = metadata.title.slice(0, 120);
+      autoTitle.current = title.value;
+    }
+    if (notes instanceof HTMLTextAreaElement) notes.value = [...new Set([...notes.value.split("\n").filter(Boolean), ...metadata.notes])].join("\n");
     const input = form.current?.elements.namedItem("bpm");
     if (!(input instanceof HTMLInputElement) || (input.value && input.value !== autoBpm.current)) return;
-    const bpm = bpmFromFilename(file.name);
+    const bpm = metadata.bpm;
     if (bpm !== null) {
       input.value = String(bpm);
       autoBpm.current = input.value;
@@ -91,7 +100,7 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
       }
       try {
         values.delete("cover");
-        if (coverCrop) {
+        if (kind === "beats" && coverCrop) {
           setStatus("Preparing cover crop…");
           values.set("cover", await croppedCover(coverCrop));
         }
@@ -106,7 +115,7 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
           generatedDuration = generated.duration;
         }
         const preview = await upload("preview", "track-previews", audioTypes, 50);
-        const cover = await upload("cover", "track-covers", coverTypes, 5);
+        const cover = kind === "beats" ? await upload("cover", "track-covers", coverTypes, 5) : null;
         const mp3 = kind === "beats" ? await upload("mp3", "purchased-beats", {mp3: "audio/mpeg"}, 50) : null;
         const wav = kind === "beats" ? await upload("wav", "purchased-beats", {wav: "audio/wav"}, 50) : null;
         const download = kind === "loops" ? await upload("download", "purchased-beats", { ...audioTypes, zip: "application/zip" }, 50) : null;
@@ -114,14 +123,15 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
         if (!previewPath) throw new Error("Choose a preview audio file.");
         const duration = String(values.get("duration") || "").trim();
         setStatus("Saving track…");
+        const parsed = parseTrackText(String(values.get("title") || ""));
         const payload: AdminTrack = {
-          id, kind, title: String(values.get("title") || "").trim(), bpm: Number(values.get("bpm")),
+          id, kind, title: parsed.title, bpm: Number(values.get("bpm")),
           duration_seconds: duration ? Number(duration) : generatedDuration ?? (preview ? await audioLength(preview.file) : track?.duration_seconds ?? null),
           genre: track?.genre || "", musical_key: track?.musical_key || "",
           description: track?.description || "",
-          moods: track?.moods || [], tags: list(values.get("tags"), ","), notes: list(values.get("notes"), "\n"),
-          preview_path: previewPath, cover_path: cover?.path || track?.cover_path || null,
-          published: values.get("published") === "on",
+          moods: track?.moods || [], tags: list(values.get("tags"), ","), notes: [...new Set([...list(values.get("notes"), "\n"), ...parsed.notes])],
+          preview_path: previewPath, cover_path: kind === "beats" ? cover?.path || track?.cover_path || null : null,
+          published: track?.published ?? false,
         };
         const leases = ([{lease:"mp3" as const, upload:mp3}, {lease:"wav" as const, upload:wav}]).flatMap(({lease,upload})=>upload ? [{lease,path:upload.path,name:upload.file.name.replace(/[^\w. ()-]/g,"_").slice(0,200)}] : []);
         const result = await saveTrack(payload, download?.path, download?.file.name.replace(/[^\w. ()-]/g, "_").slice(0, 200), leases);
@@ -130,6 +140,7 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
         setHasWav(false);
         setPreviewFile(null); setWavFile(null);
         autoBpm.current = null;
+        autoTitle.current = null;
         setCoverCrop(null);
         setStatus(payload.published ? "Published. Your track is now in the catalog." : "Draft saved.");
         onSaved(payload, !track);
@@ -148,9 +159,9 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
         {track && <button className="auth-text-link" type="button" disabled={pending} onClick={onCancel}>Cancel edit</button>}
       </div>
       {(track || previewFile || wavFile) && <AdminPreview id={track?.id || `admin-upload-${previewId}`} title={track?.title || wavFile?.name || previewFile?.name || "Untitled"} bpm={track?.bpm || 0} file={wavFile || previewFile} previewPath={track?.preview_path} coverPath={track?.cover_path} />}
-      <form ref={form} onSubmit={submit}>
+      <form ref={form} onSubmit={submit} onKeyDown={event => { if (event.key === "Enter" && event.target instanceof HTMLInputElement && event.target.type !== "file") event.preventDefault(); }}>
         <fieldset disabled={pending} className="admin-fields">
-          <label>Title<input name="title" required maxLength={120} defaultValue={track?.title} /></label>
+          <label>Title<input name="title" required maxLength={120} defaultValue={track?.title} onBlur={event => { const parsed = parseTrackText(event.target.value); event.target.value = parsed.title; const notes = form.current?.elements.namedItem("notes"); if (notes instanceof HTMLTextAreaElement) notes.value = [...new Set([...notes.value.split("\n").filter(Boolean), ...parsed.notes])].join("\n"); }} /></label>
           <div className="admin-field-pair">
             <label>BPM<span className="admin-hint">Auto from filename, e.g. 140bpm · editable</span><input name="bpm" type="number" required min={1} max={400} step={1} defaultValue={track?.bpm} onChange={() => { autoBpm.current = null; }} /></label>
             <label>Length in seconds<input name="duration" type="number" min={1} max={86400} step={1} placeholder="Auto from preview" defaultValue={track?.duration_seconds ?? ""} /></label>
@@ -159,14 +170,14 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
           <label>Additional notes<span className="admin-hint">One per line</span><textarea name="notes" maxLength={15000} rows={2} defaultValue={track?.notes.join("\n")} /></label>
           <label>Preview audio<span className="admin-hint">Public · up to 50 MB{kind === "beats" ? " · optional with WAV: creates a 30-second preview" : track ? " · leave empty to keep current" : ""}</span>
             <input name="preview" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac" required={!track && (kind !== "beats" || !hasWav)} onChange={event => { setPreviewFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0], true); }} /></label>
-          <CoverCropper value={coverCrop} onChange={setCoverCrop} onLoading={setCoverLoading} existingCover={Boolean(track?.cover_path)} />
+          {kind === "beats" && <CoverCropper value={coverCrop} onChange={setCoverCrop} onLoading={setCoverLoading} existingCover={Boolean(track?.cover_path)} />}
           {kind === "beats" ? <>
             <label>WAV lease download<span className="admin-hint">Private · up to 50 MB · creates a 320 kbps MP3 automatically · leave empty to keep current</span><input name="wav" type="file" accept=".wav" onChange={event=>{ setHasWav(Boolean(event.target.files?.[0])); setWavFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0]); }} /></label>
           </> : <label>Purchased download<span className="admin-hint">Private · audio or ZIP · optional · up to 50 MB · existing file stays unless replaced</span>
             <input name="download" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac,.zip" onChange={event => readFilename(event.target.files?.[0])} /></label>}
-          <label className="admin-checkbox"><input name="published" type="checkbox" defaultChecked={track?.published ?? true} />Publish in {kind === "beats" ? "Beat Vault" : "Loop Kit"}</label>
+          {!track && <p className="admin-hint">Uploads save as drafts. Use Publish in your catalog when ready.</p>}
           {kind === "beats" && <p className="admin-hint">MP3 $24.99 CAD · WAV $34.99 CAD. Upload a WAV to enable both leases.</p>}
-          <button className="auth-submit" type="submit" disabled={coverLoading}>{coverLoading ? "Opening cover…" : pending ? status || "Please wait…" : track ? "Save changes" : "Upload track"}</button>
+          <button className="auth-submit" type="submit" disabled={coverLoading}>{coverLoading ? "Opening cover…" : pending ? status || "Please wait…" : track ? "Save changes" : "Upload draft"}</button>
         </fieldset>
         {error && <p className="auth-error" role="alert">{error}</p>}
         {!pending && status && <p className="auth-message" role="status">{status}</p>}

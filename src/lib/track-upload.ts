@@ -15,3 +15,18 @@ export function bpmFromFilename(filename: string): number | null {
   const values = new Set(matches.map(match => Number(match[1])).filter(bpm => bpm >= 1 && bpm <= 400));
   return values.size === 1 ? [...values][0] : null;
 }
+
+export function parseTrackText(text: string) {
+  const notes: string[] = [];
+  const title = text.replace(/_+/g, " ").replace(/@yearofziova\b/gi, "").replace(/\bdetuned[\s_]*([+-]?\d+(?:\.\d+)?)[\s_]*cents?\b/gi, (_match, cents: string) => {
+    const note = `Detuned ${cents} cents`;
+    if (!notes.includes(note)) notes.push(note);
+    return "";
+  }).replace(/_+/g, " ").replace(/\s+/g, " ").replace(/^[\s\-–|]+|[\s\-–|]+$/g, "").trim();
+  return { title, notes };
+}
+
+export function metadataFromFilename(filename: string) {
+  const text = filename.replace(/\.[^.]+$/, "").replace(/(?:^|[\s_-])\d{1,3}[\s_-]*bpm(?=$|[\s_-])/gi, " ");
+  return { ...parseTrackText(text), bpm: bpmFromFilename(filename) };
+}

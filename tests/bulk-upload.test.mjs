@@ -6,6 +6,7 @@ import ts from "typescript";
 const compile = source => ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
 const url = source => `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
 const trackUpload = url(compile(await readFile(new URL("../src/lib/track-upload.ts", import.meta.url), "utf8")));
+const { metadataFromFilename, parseTrackText } = await import(trackUpload);
 const planSource = (await readFile(new URL("../src/lib/bulk-upload-plan.ts", import.meta.url), "utf8")).replace('"@/lib/track-upload"', JSON.stringify(trackUpload));
 const { planBulkUpload } = await import(url(compile(planSource)));
 const workerSource = (await readFile(new URL("../src/lib/bulk-track-upload.ts", import.meta.url), "utf8"))
@@ -15,6 +16,15 @@ const workerSource = (await readFile(new URL("../src/lib/bulk-track-upload.ts", 
   .replace('await import("@/lib/wav-to-mp3")', '({ wavToMp3: globalThis.bulkFixture.convert })');
 const { bulkTrackError, uploadBulkTrack } = await import(url(compile(workerSource)));
 const file = (name, path = name, size = 100) => ({ name, webkitRelativePath: path, size });
+
+test("titles remove the producer handle and move detuning into notes while retaining filename BPM", () => {
+  assert.deepEqual(metadataFromFilename("breathe_140bpm_@yearofziova_detuned_-50_cents.wav"), { title: "breathe", bpm: 140, notes: ["Detuned -50 cents"] });
+  assert.deepEqual(parseTrackText("haze @YEAROFZIOVA detuned +20.5 cents"), { title: "haze", notes: ["Detuned +20.5 cents"] });
+  assert.deepEqual(parseTrackText("haze detuned 20 cents detuned 20 cents"), { title: "haze", notes: ["Detuned 20 cents"] });
+  const loop = planBulkUpload([file("haze_120bpm_detuned_30_cents.wav"), file("cover.jpg")], "loops")[0];
+  assert.equal(loop.cover, null);
+  assert.deepEqual(loop.notes, ["Detuned 30 cents"]);
+});
 
 test("folder planning imports WAV beats with parsed BPM, matching art and distinct nested paths", () => {
   const art = file("cover.jpg", "drop/a/cover.jpg");

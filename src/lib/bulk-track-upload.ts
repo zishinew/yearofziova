@@ -1,4 +1,4 @@
-import { audioTypes, coverTypes, type AdminTrack } from "@/lib/track-upload";
+import { audioTypes, coverTypes, parseTrackText, type AdminTrack } from "@/lib/track-upload";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { saveTrack } from "@/app/admin/actions";
 
@@ -48,7 +48,7 @@ export async function uploadBulkTrack(track: BulkTrack, kind: "beats" | "loops",
       seconds = await duration(preview!);
     }
     const previewPath = await upload(preview!, "track-previews", audioTypes);
-    const coverPath = track.cover ? await upload(track.cover, "track-covers", coverTypes) : null;
+    const coverPath = kind === "beats" && track.cover ? await upload(track.cover, "track-covers", coverTypes) : null;
     const downloadPath = await upload(track.file, "purchased-beats", { ...audioTypes, zip: "application/zip" });
     const name = (file: File) => file.name.replace(/[^\w. ()-]/g, "_").slice(0, 200);
     const leases: { lease: "mp3" | "wav"; path: string; name: string }[] = [];
@@ -56,7 +56,8 @@ export async function uploadBulkTrack(track: BulkTrack, kind: "beats" | "loops",
       const path = await upload(mp3, "purchased-beats", audioTypes);
       leases.push({ lease: "mp3", path, name: name(mp3) }, { lease: "wav", path: downloadPath, name: name(track.file) });
     }
-    const payload: AdminTrack = { id: track.id, kind, title: track.title.trim(), bpm: Number(track.bpm), duration_seconds: seconds, genre: "", musical_key: "", description: "", moods: [], tags, notes, preview_path: previewPath, cover_path: coverPath, published };
+    const parsed = parseTrackText(track.title);
+    const payload: AdminTrack = { id: track.id, kind, title: parsed.title || "Untitled", bpm: Number(track.bpm), duration_seconds: seconds, genre: "", musical_key: "", description: "", moods: [], tags, notes: [...new Set([...notes, ...parsed.notes])], preview_path: previewPath, cover_path: coverPath, published };
     onProgress("Saving track…");
     const result = await saveTrack(payload, kind === "loops" ? downloadPath : undefined, kind === "loops" ? name(track.file) : undefined, leases);
     if (result.error) throw new Error(result.error);
