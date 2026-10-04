@@ -5,6 +5,7 @@ import { PlaybackIcon } from "@/components/playback-icon";
 import { usePlayback } from "@/components/audio-player";
 import { type Beat } from "@/data/beats";
 import { useCart } from "@/components/shopping-cart";
+import { LoopDownload } from "@/components/loop-download";
 
 function duration(seconds?: number) {
   if (seconds === undefined || !Number.isFinite(seconds) || seconds < 0) return "—";
@@ -27,7 +28,7 @@ function TrackRow({ track, kind }: { track: Beat; kind: "beats" | "loops" }) {
       <span className="playlist-number"><span className="sr-only">BPM: </span>{track.bpm}</span>
       <span className="playlist-number"><span className="sr-only">Duration: </span>{duration(track.durationSeconds)}</span>
     </button>
-    {kind === "beats" ? <button type="button" className="track-add" aria-label={`${label} for ${track.title}`} onClick={() => cart.add(track)}>{label}</button> : <a className="track-loop-inquiry" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer">Inquire ↗</a>}
+    {kind === "beats" ? <button type="button" className="track-add" aria-label={`${label} for ${track.title}`} onClick={() => cart.add(track)}>{label}</button> : <LoopDownload id={track.id} title={track.title} />}
   </article>;
 }
 export function SoundPlaylist({ kind, tracks, loadError = false }: { kind: "beats" | "loops"; tracks: Beat[]; loadError?: boolean }) {

@@ -42,7 +42,7 @@ export async function uploadBulkTrack(track: BulkTrack, kind: "beats" | "loops",
     if (kind === "beats") {
       const { wavToMp3 } = await import("@/lib/wav-to-mp3");
       const generated = await wavToMp3(track.file, onProgress);
-      preview = generated.preview; mp3 = generated.mp3; seconds = generated.duration;
+      preview = generated.mp3; mp3 = generated.mp3; seconds = generated.duration;
     } else {
       onProgress("Reading preview…");
       seconds = await duration(preview!);

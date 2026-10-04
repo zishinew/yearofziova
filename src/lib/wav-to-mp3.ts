@@ -13,20 +13,19 @@ export async function wavToMp3(file: File, onProgress: (message: string) => void
   const channels = Array.from({ length: audio.numberOfChannels }, (_, i) => audio.getChannelData(i).slice());
   const worker = new Worker(new URL("./mp3.worker.ts", import.meta.url));
   const name = file.name.replace(/\.wav$/i, ".mp3");
-  const encoded = await new Promise<{ mp3: ArrayBuffer; preview: ArrayBuffer }>((resolve, reject) => {
+  const encoded = await new Promise<{ mp3: ArrayBuffer }>((resolve, reject) => {
     const timer = window.setTimeout(() => { worker.terminate(); reject(new Error("MP3 conversion timed out. Please try a shorter WAV.")); }, 10 * 60 * 1000);
     const finish = () => { window.clearTimeout(timer); worker.terminate(); };
     worker.onerror = () => { finish(); reject(new Error("Couldn't create the MP3. Please try again.")); };
-    worker.onmessage = (event: MessageEvent<{ percent?: number; mp3?: ArrayBuffer; preview?: ArrayBuffer; error?: string }>) => {
+    worker.onmessage = (event: MessageEvent<{ percent?: number; mp3?: ArrayBuffer; error?: string }>) => {
       if (event.data.error) { finish(); reject(new Error(event.data.error)); }
-      else if (event.data.mp3 && event.data.preview) { finish(); resolve({ mp3: event.data.mp3, preview: event.data.preview }); }
+      else if (event.data.mp3) { finish(); resolve({ mp3: event.data.mp3 }); }
       else if (event.data.percent !== undefined) onProgress(`Creating MP3… ${event.data.percent}%`);
     };
     worker.postMessage({ channels, sampleRate: audio.sampleRate }, channels.map(channel => channel.buffer));
   });
   return {
     mp3: new File([encoded.mp3], name, { type: "audio/mpeg" }),
-    preview: new File([encoded.preview], name.replace(/\.mp3$/i, "-preview.mp3"), { type: "audio/mpeg" }),
     duration: Math.max(1, Math.round(audio.duration)),
   };
 }

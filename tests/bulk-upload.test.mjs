@@ -69,14 +69,14 @@ function fixture(t, failSave = false) {
   return { uploads, removals, saves };
 }
 
-test("bulk WAV upload keeps lease files private, uploads preview separately and saves both leases atomically", async t => {
+test("bulk WAV upload keeps lease files private, uses full MP3 for playback and saves both leases atomically", async t => {
   const f = fixture(t);
   const id = crypto.randomUUID();
   await uploadBulkTrack({ id, file: file("beat.wav"), cover: file("cover.png"), preview: null, title: " beat ", bpm: "140" }, "beats", true, ["rage"], ["note"], () => {});
   assert.equal(f.uploads.length, 4);
   assert.ok(f.uploads.every(upload => upload.path.startsWith(`${id}/`) && upload.options.upsert === false));
-  assert.equal(f.uploads.find(upload => upload.file.name === "beat-preview.mp3").bucket, "track-previews");
-  assert.ok(f.uploads.filter(upload => ["beat.mp3", "beat.wav"].includes(upload.file.name)).every(upload => upload.bucket === "purchased-beats"));
+  assert.equal(f.uploads.find(upload => upload.bucket === "track-previews").file.name, "beat.mp3");
+  assert.deepEqual(f.uploads.filter(upload => upload.bucket === "purchased-beats").map(upload => upload.file.name).sort(), ["beat.mp3", "beat.wav"]);
   const [track, download, , leases] = f.saves[0];
   assert.equal(track.title, "beat"); assert.equal(track.duration_seconds, 137);
   assert.deepEqual(track.tags, ["rage"]); assert.deepEqual(track.notes, ["note"]);

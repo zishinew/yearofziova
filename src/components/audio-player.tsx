@@ -32,7 +32,7 @@ export function AudioPlayer({ children }: { children: ReactNode }) {
     catch (problem) {
       if (ticket === request.current && !(problem instanceof DOMException && problem.name === "AbortError")) {
         setPlaying(false);
-        setError("Couldn't play this preview. Please try again.");
+        setError("Couldn't play this track. Please try again.");
       }
     }
   }
@@ -92,23 +92,23 @@ export function AudioPlayer({ children }: { children: ReactNode }) {
       onTimeUpdate={event => setPosition(event.currentTarget.currentTime)}
       onLoadedMetadata={event => { const duration = event.currentTarget.duration; setLength(Number.isFinite(duration) ? duration : 0); }}
       onDurationChange={event => { const duration = event.currentTarget.duration; setLength(Number.isFinite(duration) ? duration : 0); }}
-      onError={() => { setPlaying(false); setError("This preview is unavailable. Please try again later."); }} />
+      onError={() => { setPlaying(false); setError("This track is unavailable. Please try again later."); }} />
     {track && <section className="playbar" aria-label="Audio player">
       <div className="playbar-track">
         {track.coverArt ? <Image src={track.coverArt} alt="" width={44} height={44} className="playbar-cover" /> : <span className="playbar-cover playbar-cover-empty" aria-hidden="true">♫</span>}
         <div><p className="playbar-title">{track.title}</p><span>ziova</span></div>
       </div>
       <div className="playbar-transport">
-        <button type="button" className="playbar-toggle" aria-label={`${playing ? "Pause" : "Play"} preview`} onClick={toggle}><PlaybackIcon playing={playing} size={18} /></button>
+        <button type="button" className="playbar-toggle" aria-label={`${playing ? "Pause" : "Play"} audio`} onClick={toggle}><PlaybackIcon playing={playing} size={18} /></button>
         <span className="playbar-time">{time(position)}</span>
-        <input type="range" aria-label="Seek preview" aria-valuetext={`${time(position)} of ${time(shownLength)}`} min={0} max={length || 1} step={0.1} value={Math.min(position, length || 1)} disabled={!length} onChange={event => {
+        <input type="range" aria-label="Seek audio" aria-valuetext={`${time(position)} of ${time(shownLength)}`} min={0} max={length || 1} step={0.1} value={Math.min(position, length || 1)} disabled={!length} onChange={event => {
           const next = Number(event.target.value);
           if (audio.current) { audio.current.currentTime = next; setPosition(next); }
         }} />
         <span className="playbar-time">{time(shownLength)}</span>
       </div>
       <div className="playbar-volume">
-        <button type="button" aria-label={volume ? "Mute preview" : "Unmute preview"} onClick={() => changeVolume(volume ? 0 : previousVolume.current)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z" />{volume ? <><path d="M15 8a6 6 0 0 1 0 8" /><path d="M18 5a10 10 0 0 1 0 14" /></> : <path d="m16 9 5 6m0-6-5 6" />}</svg></button>
+        <button type="button" aria-label={volume ? "Mute audio" : "Unmute audio"} onClick={() => changeVolume(volume ? 0 : previousVolume.current)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z" />{volume ? <><path d="M15 8a6 6 0 0 1 0 8" /><path d="M18 5a10 10 0 0 1 0 14" /></> : <path d="m16 9 5 6m0-6-5 6" />}</svg></button>
         <input type="range" aria-label="Volume" aria-valuetext={`${Math.round(volume * 100)} percent`} min={0} max={1} step={0.01} value={volume} onChange={event => changeVolume(Number(event.target.value))} />
       </div>
       <button type="button" className="playbar-close" aria-label="Close player" onClick={close}>×</button>

@@ -110,8 +110,7 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
           const { wavToMp3 } = await import("@/lib/wav-to-mp3");
           const generated = await wavToMp3(sourceWav, setStatus);
           values.set("mp3", generated.mp3);
-          const previewFile = values.get("preview");
-          if (!(previewFile instanceof File) || !previewFile.size) values.set("preview", generated.preview);
+          values.set("preview", generated.mp3);
           generatedDuration = generated.duration;
         }
         const preview = await upload("preview", "track-previews", audioTypes, 50);
@@ -120,7 +119,7 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
         const wav = kind === "beats" ? await upload("wav", "purchased-beats", {wav: "audio/wav"}, 50) : null;
         const download = kind === "loops" ? await upload("download", "purchased-beats", { ...audioTypes, zip: "application/zip" }, 50) : null;
         const previewPath = preview?.path || track?.preview_path;
-        if (!previewPath) throw new Error("Choose a preview audio file.");
+        if (!previewPath) throw new Error("Choose a playback audio file.");
         const duration = String(values.get("duration") || "").trim();
         setStatus("Saving track…");
         const parsed = parseTrackText(String(values.get("title") || ""));
@@ -164,16 +163,16 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
           <label>Title<input name="title" required maxLength={120} defaultValue={track?.title} onBlur={event => { const parsed = parseTrackText(event.target.value); event.target.value = parsed.title; const notes = form.current?.elements.namedItem("notes"); if (notes instanceof HTMLTextAreaElement) notes.value = [...new Set([...notes.value.split("\n").filter(Boolean), ...parsed.notes])].join("\n"); }} /></label>
           <div className="admin-field-pair">
             <label>BPM<span className="admin-hint">Auto from filename, e.g. 140bpm · editable</span><input name="bpm" type="number" required min={1} max={400} step={1} defaultValue={track?.bpm} onChange={() => { autoBpm.current = null; }} /></label>
-            <label>Length in seconds<input name="duration" type="number" min={1} max={86400} step={1} placeholder="Auto from preview" defaultValue={track?.duration_seconds ?? ""} /></label>
+            <label>Length in seconds<input name="duration" type="number" min={1} max={86400} step={1} placeholder="Auto from audio" defaultValue={track?.duration_seconds ?? ""} /></label>
           </div>
           <label>Tags<span className="admin-hint">Separate with commas</span><input name="tags" maxLength={2400} defaultValue={track?.tags.join(", ")} /></label>
           <label>Additional notes<span className="admin-hint">One per line</span><textarea name="notes" maxLength={15000} rows={2} defaultValue={track?.notes.join("\n")} /></label>
-          <label>Preview audio<span className="admin-hint">Public · up to 50 MB{kind === "beats" ? " · optional with WAV: creates a 30-second preview" : track ? " · leave empty to keep current" : ""}</span>
+          <label>{kind === "beats" ? "Full beat audio" : "Playback audio"}<span className="admin-hint">Public · up to 50 MB{kind === "beats" ? " · optional with WAV: uses the full generated MP3" : track ? " · leave empty to keep current" : ""}</span>
             <input name="preview" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac" required={!track && (kind !== "beats" || !hasWav)} onChange={event => { setPreviewFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0], true); }} /></label>
           {kind === "beats" && <CoverCropper value={coverCrop} onChange={setCoverCrop} onLoading={setCoverLoading} existingCover={Boolean(track?.cover_path)} />}
           {kind === "beats" ? <>
             <label>WAV lease download<span className="admin-hint">Private · up to 50 MB · creates a 320 kbps MP3 automatically · leave empty to keep current</span><input name="wav" type="file" accept=".wav" onChange={event=>{ setHasWav(Boolean(event.target.files?.[0])); setWavFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0]); }} /></label>
-          </> : <label>Purchased download<span className="admin-hint">Private · audio or ZIP · optional · up to 50 MB · existing file stays unless replaced</span>
+          </> : <label>Free loop download<span className="admin-hint">Audio or ZIP · up to 50 MB · downloads require agreement to your terms · optional; keeps the current download or uses playback audio</span>
             <input name="download" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac,.zip" onChange={event => readFilename(event.target.files?.[0])} /></label>}
           {!track && <p className="admin-hint">Uploading publishes this track in your catalog.</p>}
           {kind === "beats" && <p className="admin-hint">MP3 $24.99 CAD · WAV $34.99 CAD. Upload a WAV to enable both leases.</p>}
