@@ -35,7 +35,7 @@ test("checkout rejects an already-owned format but allows a different lease", as
     storage: {from:()=>({info:async()=>({data:{size:100}})})},
   };
   globalThis.ownedCheckoutFixture = {
-    auth:{auth:{getUser:async()=>({data:{user:{id:"buyer",email:"buyer@example.com",email_confirmed_at:"confirmed"}}})}},
+    auth:{auth:{getUser:async()=>({data:{user:{id:"buyer",email:"buyer@example.com",email_confirmed_at:"confirmed"}}})}, from: () => ({select() {return this;},eq() {return this;},maybeSingle:async()=>({data:null,error:null})})},
     services:{db,stripe:{checkout:{sessions:{create:async()=>{sessions++;return {id:"cs_test",url:"https://checkout.stripe.com/test"};}}}}},
   };
   try {
@@ -49,4 +49,20 @@ test("checkout rejects an already-owned format but allows a different lease", as
     if(previous === undefined) delete process.env.STRIPE_WEBHOOK_SECRET; else process.env.STRIPE_WEBHOOK_SECRET=previous;
     delete globalThis.ownedCheckoutFixture;
   }
+});
+
+
+test("admin checkout is blocked before creating an order or calling Stripe", async () => {
+  let providerCalled = false;
+  globalThis.ownedCheckoutFixture = {
+    auth: { auth: {getUser: async () => ({data:{user:{id:"admin",email_confirmed_at:"confirmed"}}})},
+      from(table) { assert.equal(table,"admin_users"); return { select() {return this;}, eq(field,value) {assert.equal(field,"user_id");assert.equal(value,"admin");return this;}, maybeSingle:async()=>({data:{user_id:"admin"},error:null}) }; } },
+    get services() { providerCalled = true; throw Error("Stripe should never be called"); },
+  };
+  try {
+    const response = await POST(new Request("http://localhost:3000/api/checkout", {method:"POST",headers:{origin:"http://localhost:3000","content-type":"application/json"},body:JSON.stringify({items:[{id,lease:"mp3"}]})}));
+    assert.equal(response.status,403);
+    assert.match((await response.json()).error,/Admin accounts cannot purchase/);
+    assert.equal(providerCalled,false);
+  } finally { delete globalThis.ownedCheckoutFixture; }
 });

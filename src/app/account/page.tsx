@@ -15,18 +15,18 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   if (!supabase) redirect("/login");
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  const { data: admin } = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
+  if (admin && user.email_confirmed_at) redirect("/admin");
   const { data: purchases, error } = await supabase.from("purchases")
     .select("id, purchased_at, download_products!inner(id, title, bpm, lease, catalog_track_id, catalog_tracks(cover_path))")
     .eq("user_id", user.id).eq("status", "paid").order("purchased_at", { ascending: false });
   const params = await searchParams;
-  const { data: admin } = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
   const downloads = groupDownloads(purchases || []);
 
   return (
     <AccountShell>
       <DownloadsSync userId={user.id} revision={(purchases || []).map(p => p.id).sort().join(",")} />
       <section className="downloads-library">
-        {admin && <Link href="/admin" className="admin-entry">Admin dashboard ↗</Link>}
         <div className="downloads-heading"><div><h1>My Downloads</h1><p>{user.email}</p></div>
           <form action={logout}><button className="auth-text-link" type="submit">Sign out</button></form>
         </div>

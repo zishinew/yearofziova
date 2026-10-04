@@ -8,12 +8,14 @@ import { useSiteSession } from "@/components/site-session";
 import { CartButton } from "@/components/shopping-cart";
 import { SoundPlaylist } from "@/components/sound-playlist";
 import { beats, loops, type Beat } from "@/data/beats";
+import { useAdminMode } from "@/components/admin-mode";
 import { watchIntroPhase, type IntroPhase } from "@/lib/intro-recovery";
 
 export function SiteCanvas({ skipLoader = false, initialView = "home", beatTracks = beats, loopTracks = loops, catalogError = false }: {
   initialView?: "home" | "beats" | "loops";
   skipLoader?: boolean; beatTracks?: Beat[]; loopTracks?: Beat[]; catalogError?: boolean;
 }) {
+  const isAdmin = useAdminMode();
   const { entered, canvasReady } = useSiteSession();
   const [view, setView] = useState<"home" | "beats" | "loops">(initialView);
   const [phase, setPhase] = useState<IntroPhase>(skipLoader || entered ? "settled" : "entering");
@@ -52,7 +54,7 @@ export function SiteCanvas({ skipLoader = false, initialView = "home", beatTrack
         </div>
       )}
       <header className={`vault-header ${loading ? "vault-header-loading" : ""}`} aria-label="Site header">
-        {!loading && <div className="header-actions"><CartButton /><Link href="/login" scroll={false}>Account</Link></div>}
+        {!loading && <div className="header-actions"><CartButton /><Link href={isAdmin ? "/admin" : "/login"} scroll={false}>{isAdmin ? "Admin dashboard" : "Account"}</Link></div>}
         {view !== "home" && !loading && (
           <button type="button" className="vault-back" onClick={() => navigate("home")}>
             <span aria-hidden="true">←</span> Back

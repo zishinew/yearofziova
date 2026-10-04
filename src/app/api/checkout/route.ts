@@ -11,6 +11,9 @@ export async function POST(request: Request) {
     const supabase = await createServerSupabaseClient();
     const user = supabase ? (await supabase.auth.getUser()).data.user : null;
     if (!user?.email_confirmed_at) return fail("Please sign in with a confirmed email before checkout.", 401);
+    const { data: admin, error: adminError } = await supabase!.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
+    if (adminError) throw new Error("Admin membership lookup failed");
+    if (admin) return fail("Admin accounts cannot purchase beats. Edit tracks from your catalog instead.", 403);
     if (Number(request.headers.get("content-length")) > 16384) return fail("Cart is too large.");
     const body = await request.json();
     const items = parseCheckoutItems(body.items);

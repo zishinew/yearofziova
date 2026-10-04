@@ -9,6 +9,16 @@ function validList(value: unknown, max: number) {
   return Array.isArray(value) && value.length <= 30 && value.every(v => validText(v, max));
 }
 
+export async function getEditableTrack(id: string): Promise<{ track?: AdminTrack; error?: string }> {
+  const session = await getAdminSession();
+  if (!session) return { error: "Admin access required. Please sign in again." };
+  if (typeof id !== "string" || !UUID.test(id)) return { error: "This track is unavailable." };
+  const { data, error } = await session.supabase.from("catalog_tracks")
+    .select("id,kind,title,bpm,duration_seconds,genre,musical_key,description,moods,tags,notes,preview_path,cover_path,published")
+    .eq("id", id).is("deleted_at", null).maybeSingle();
+  return error || !data ? { error: "Couldn't load this track." } : { track: data };
+}
+
 export async function saveTrack(track: AdminTrack, downloadPath?: string, downloadName?: string, leases: { lease: "mp3" | "wav"; path: string; name: string }[] = []): Promise<{ error?: string }> {
   const session = await getAdminSession();
   if (!session) return { error: "Admin access required. Please sign in again." };

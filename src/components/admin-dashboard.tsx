@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
+import { logout } from "@/app/auth/actions";
 import { SuccessNotification } from "@/components/success-notification";
 import { BulkUpload } from "@/components/bulk-upload";
 import { AdminPreview } from "@/components/admin-preview";
@@ -38,7 +39,7 @@ function audioLength(file: File): Promise<number | null> {
   });
 }
 
-function TrackForm({ kind, track, onSaved, onCancel }: {
+export function TrackForm({ kind, track, onSaved, onCancel }: {
   kind: "beats" | "loops"; track: AdminTrack | null; onSaved: (saved: AdminTrack, created: boolean) => void; onCancel: () => void;
 }) {
   const form = useRef<HTMLFormElement>(null);
@@ -215,7 +216,7 @@ export function AdminDashboard({ tracks, loadError }: { tracks: AdminTrack[]; lo
     });
   }
   return <section className="admin-dashboard">
-    <h1>Dashboard</h1>
+    <div className="downloads-heading"><h1>Dashboard</h1><div className="admin-account-actions"><Link href="/account/password" className="auth-text-link">Change password</Link><form action={logout}><button type="submit" className="auth-text-link">Sign out</button></form></div></div>
     <div className="admin-tabs" role="group" aria-label="Catalog section">
       <button type="button" disabled={bulkBusy} aria-pressed={kind === "beats"} onClick={() => { setKind("beats"); setEditing(null); }}>Beats</button>
       <button type="button" disabled={bulkBusy} aria-pressed={kind === "loops"} onClick={() => { setKind("loops"); setEditing(null); }}>Loops</button>

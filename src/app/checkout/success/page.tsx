@@ -7,9 +7,11 @@ import { DownloadButton } from "@/components/download-button";
 import { CheckoutStatus } from "@/components/checkout-status";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { fulfillSession } from "@/lib/checkout-fulfillment";
+import { getAdminSession } from "@/lib/supabase/admin";
 import { parseCheckoutItems } from "@/lib/payments";
 export const dynamic = "force-dynamic";
 export default async function CheckoutSuccess({ searchParams }: { searchParams:Promise<{session_id?:string}> }) {
+  if (await getAdminSession()) redirect("/admin");
   const supabase = await createServerSupabaseClient();
   const user = supabase ? (await supabase.auth.getUser()).data.user : null;
   if (!user || !supabase) redirect("/login");

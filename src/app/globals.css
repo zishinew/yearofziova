@@ -401,3 +401,7 @@ body:has(.auth-dialog[open]) .playbar { filter: blur(8px); }
 .purchase-total { display: flex; justify-content: space-between; font-size: 12px; padding-top: 20px; border-top: 1px solid #e5e5e5; }
 .purchase-note { margin: 20px 0 28px; font-size: 11px; line-height: 1.8; color: #888; }
 @media (prefers-reduced-motion: reduce) { .payment-spinner, .purchase-receipt { animation: none; } }
+
+.catalog-edit-dialog { width: min(640px, calc(100% - 32px)); }
+.catalog-edit-dialog .admin-editor { min-width: 0; }
+.admin-account-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 20px; }

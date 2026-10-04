@@ -5,6 +5,7 @@ import { type Beat } from "@/data/beats";
 import { LEASE_PRICES, type CheckoutItem } from "@/lib/payments";
 import { useOwnedLeases } from "@/components/use-owned-leases";
 import { useRouter } from "next/navigation";
+import { useAdminMode } from "@/components/admin-mode";
 import { SuccessNotification } from "@/components/success-notification";
 
 type Lease = "mp3" | "wav";
@@ -31,6 +32,7 @@ export function clearPurchasedCartItems(purchased: CheckoutItem[]) {
 }
 
 export function ShoppingCart({ children }: { children: ReactNode }) {
+  const isAdmin = useAdminMode();
   const router = useRouter();
   const ownership = useOwnedLeases();
   const owns = (id: string, format?: Lease) => ownership.items.some(item => item.id === id && (!format || item.lease === format));
@@ -53,6 +55,7 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
   function openCart() {
+    if (isAdmin) return;
     setNotification(null);
     setSelection(null);
     setError("");
@@ -63,6 +66,7 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
     catch { setError("Couldn't save your cart. Please allow browser storage and try again."); setOpened(true); return false; }
   }
   function choose(beat: Pick<Beat, "id" | "title">) {
+    if (isAdmin) return;
     setNotification(null);
     setSelection(beat);
     setLease(items.find(item => item.id === beat.id)?.lease || "mp3");
@@ -70,14 +74,15 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
     setOpened(true);
   }
   useEffect(() => {
-    if (!opened) return;
+    if (!opened || isAdmin) return;
     const element = dialog.current;
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     element?.showModal();
     return () => { element?.close(); document.body.style.overflow = overflow; };
-  }, [opened]);
+  }, [opened, isAdmin]);
   async function checkout(checkoutItems: Item[] = items) {
+    if (isAdmin) return;
     if (checkingOut) return;
     setCheckingOut(true); setError("");
     try {
@@ -95,8 +100,8 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
   const existing = selection ? items.some(item => item.id === selection.id) : false;
   return <CartContext.Provider value={{ items, owns, ownershipReady: ownership.ready, add: choose, remove: id => write(items.filter(item => item.id !== id)), open: openCart }}>
     {children}
-    {notification && !opened && <SuccessNotification key={`${notification.id}-${notification.lease}`} message={<>Added <strong>{notification.title}</strong> to cart</>} action={<button type="button" className="cart-notification-view" onClick={openCart}>View cart ↗</button>} onDismiss={() => setNotification(null)} />}
-    {opened && <dialog ref={dialog} className="cart-dialog" aria-labelledby="cart-title" onCancel={event => { event.preventDefault(); setOpened(false); }}>
+    {notification && !opened && !isAdmin && <SuccessNotification key={`${notification.id}-${notification.lease}`} message={<>Added <strong>{notification.title}</strong> to cart</>} action={<button type="button" className="cart-notification-view" onClick={openCart}>View cart ↗</button>} onDismiss={() => setNotification(null)} />}
+    {opened && !isAdmin && <dialog ref={dialog} className="cart-dialog" aria-labelledby="cart-title" onCancel={event => { event.preventDefault(); setOpened(false); }}>
       <div className="cart-heading"><h2 id="cart-title">{selection ? upgrading ? "Upgrade your lease" : "Choose your lease" : "Your cart"}</h2><button type="button" aria-label={selection ? "Close lease picker" : "Close cart"} onClick={() => setOpened(false)}>×</button></div>
       {selection ? <>
         <p className="lease-track-title">{selection.title}</p>
@@ -126,5 +131,7 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
 export function useCart() { return useContext(CartContext); }
 export function CartButton() {
   const cart = useCart();
+  const isAdmin = useAdminMode();
+  if (isAdmin) return null;
   return <button type="button" className="header-cart" onClick={cart.open}>Cart ({cart.items.length})</button>;
 }

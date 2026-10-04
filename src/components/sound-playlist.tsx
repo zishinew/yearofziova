@@ -5,6 +5,8 @@ import { PlaybackIcon } from "@/components/playback-icon";
 import { usePlayback } from "@/components/audio-player";
 import { type Beat } from "@/data/beats";
 import { useCart } from "@/components/shopping-cart";
+import { CatalogEdit } from "@/components/catalog-edit";
+import { useAdminMode } from "@/components/admin-mode";
 import { LoopDownload } from "@/components/loop-download";
 
 function duration(seconds?: number) {
@@ -12,6 +14,7 @@ function duration(seconds?: number) {
   return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 }
 function TrackRow({ track, kind }: { track: Beat; kind: "beats" | "loops" }) {
+  const isAdmin = useAdminMode();
   const playback = usePlayback();
   const playing = playback.track?.id === track.id && playback.playing;
   const cart = useCart();
@@ -28,7 +31,7 @@ function TrackRow({ track, kind }: { track: Beat; kind: "beats" | "loops" }) {
       <span className="playlist-number"><span className="sr-only">BPM: </span>{track.bpm}</span>
       <span className="playlist-number"><span className="sr-only">Duration: </span>{duration(track.durationSeconds)}</span>
     </button>
-    {kind === "beats" ? <button type="button" className="track-add" aria-label={`${label} for ${track.title}`} onClick={() => cart.add(track)}>{label}</button> : <LoopDownload id={track.id} title={track.title} />}
+    {isAdmin ? <CatalogEdit id={track.id} title={track.title} /> : kind === "beats" ? <button type="button" className="track-add" aria-label={`${label} for ${track.title}`} onClick={() => cart.add(track)}>{label}</button> : <LoopDownload id={track.id} title={track.title} />}
   </article>;
 }
 export function SoundPlaylist({ kind, tracks, loadError = false }: { kind: "beats" | "loops"; tracks: Beat[]; loadError?: boolean }) {
