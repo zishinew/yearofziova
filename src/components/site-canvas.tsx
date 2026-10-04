@@ -8,6 +8,7 @@ import { useSiteSession } from "@/components/site-session";
 import { CartButton } from "@/components/shopping-cart";
 import { SoundPlaylist } from "@/components/sound-playlist";
 import { beats, loops, type Beat } from "@/data/beats";
+import { watchIntroPhase, type IntroPhase } from "@/lib/intro-recovery";
 
 export function SiteCanvas({ skipLoader = false, initialView = "home", beatTracks = beats, loopTracks = loops, catalogError = false }: {
   initialView?: "home" | "beats" | "loops";
@@ -15,14 +16,14 @@ export function SiteCanvas({ skipLoader = false, initialView = "home", beatTrack
 }) {
   const { entered, canvasReady } = useSiteSession();
   const [view, setView] = useState<"home" | "beats" | "loops">(initialView);
-  const [phase, setPhase] = useState<"entering" | "center" | "docking" | "settled">(skipLoader || entered ? "settled" : "entering");
+  const [phase, setPhase] = useState<IntroPhase>(skipLoader || entered ? "settled" : "entering");
   const loading = phase !== "settled";
   const navigate = (next: typeof view) => startTransition(() => setView(next));
 
   useEffect(() => {
-    if (!canvasReady || phase !== "center") return;
-    const timer = window.setTimeout(() => setPhase("docking"), 250);
-    return () => window.clearTimeout(timer);
+    return watchIntroPhase(phase, canvasReady, next => {
+      setPhase(current => current === phase ? next : current);
+    });
   }, [canvasReady, phase]);
 
   return (
