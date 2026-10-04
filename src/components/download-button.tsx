@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { downloadPurchase } from "@/app/account/download-action";
 
-export function DownloadButton({ purchaseId }: { purchaseId: string }) {
+export function DownloadButton({ purchaseId, label = "Download ↓" }: { purchaseId: string; label?: string }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   return (
@@ -19,7 +19,7 @@ export function DownloadButton({ purchaseId }: { purchaseId: string }) {
             setError("Couldn't prepare your download. Please try again.");
           }
         });
-      }}>{pending ? "Preparing…" : "Download ↓"}</button>
+      }}>{pending ? "Preparing…" : label}</button>
       {error && <p className="auth-error" role="alert">{error}</p>}
     </div>
   );
