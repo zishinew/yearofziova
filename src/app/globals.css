@@ -259,6 +259,14 @@ body:has(.auth-dialog[open]) .account-content { filter: blur(8px); }
 .cart-items li button { cursor: pointer; font-size: 11px; color: #888; }
 .cart-total { display: flex; justify-content: space-between; margin-top: 24px; font-size: 13px; }
 .cart-note { margin-top: 24px; color: #888; font-size: 12px; line-height: 1.8; }
+.cart-notification { position: fixed; right: 24px; bottom: calc(var(--playbar-space, env(safe-area-inset-bottom, 0px)) + 24px); z-index: 90; width: min(360px, calc(100% - 48px)); padding: 20px; border: 1px solid #17171712; border-radius: 8px; background: #fffffff5; backdrop-filter: blur(16px); animation: page-arrive 200ms ease-out; }
+.cart-notification p { display: flex; align-items: flex-start; gap: 12px; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.cart-notification strong { font-weight: 600; }
+.cart-notification-check { color: #ff2d8d; }
+.cart-notification-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding-left: 24px; }
+.cart-notification-view { color: #e8227a; font-size: 11px; cursor: pointer; }
+.cart-notification-close { font-size: 20px; line-height: 1; color: #888; padding: 4px; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .cart-notification { animation: none; } }
 .cart-inquiry { display: inline-block; margin-top: 20px; font-size: 12px; }
 @media (max-width: 639px) { .header-actions { gap: 16px; font-size: 11px; } .cart-dialog { padding: 24px; } }
 @media (prefers-reduced-motion: reduce) { .cart-dialog[open] { animation: none; } }

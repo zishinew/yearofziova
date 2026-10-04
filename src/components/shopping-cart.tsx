@@ -46,15 +46,29 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
     } catch { return []; }
   }, [raw]);
   const [opened, setOpened] = useState(false);
+  const [notification, setNotification] = useState<Item | null>(null);
+  const [notificationPaused, setNotificationPaused] = useState(false);
   const [selection, setSelection] = useState<Pick<Beat, "id" | "title"> | null>(null);
   const [lease, setLease] = useState<Lease>("mp3");
   const [error, setError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (!notification || notificationPaused) return;
+    const timer = window.setTimeout(() => setNotification(null), 8000);
+    return () => window.clearTimeout(timer);
+  }, [notification, notificationPaused]);
+  function openCart() {
+    setNotification(null);
+    setSelection(null);
+    setError("");
+    setOpened(true);
+  }
   function write(next: Item[]) {
     try { localStorage.setItem(key, JSON.stringify(next)); window.dispatchEvent(new Event(changed)); setError(""); return true; }
     catch { setError("Couldn't save your cart. Please allow browser storage and try again."); setOpened(true); return false; }
   }
   function choose(beat: Pick<Beat, "id" | "title">) {
+    setNotification(null);
     setSelection(beat);
     setLease(items.find(item => item.id === beat.id)?.lease || "mp3");
     setError("");
@@ -84,8 +98,12 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
   const selectedLease = available.includes(lease) ? lease : available[0];
   const upgrading = selection ? owns(selection.id) : false;
   const existing = selection ? items.some(item => item.id === selection.id) : false;
-  return <CartContext.Provider value={{ items, owns, ownershipReady: ownership.ready, add: choose, remove: id => write(items.filter(item => item.id !== id)), open: () => { setSelection(null); setError(""); setOpened(true); } }}>
+  return <CartContext.Provider value={{ items, owns, ownershipReady: ownership.ready, add: choose, remove: id => write(items.filter(item => item.id !== id)), open: openCart }}>
     {children}
+    {notification && !opened && <div className="cart-notification" onMouseEnter={() => setNotificationPaused(true)} onMouseLeave={() => setNotificationPaused(false)} onFocusCapture={() => setNotificationPaused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setNotificationPaused(false); }}>
+      <p role="status" aria-live="polite"><span className="cart-notification-check" aria-hidden="true">✓</span><span>Added <strong>{notification.title}</strong> to cart</span></p>
+      <div className="cart-notification-actions"><button type="button" className="cart-notification-view" onClick={openCart}>View cart ↗</button><button type="button" className="cart-notification-close" aria-label="Dismiss cart notification" onClick={() => setNotification(null)}>×</button></div>
+    </div>}
     {opened && <dialog ref={dialog} className="cart-dialog" aria-labelledby="cart-title" onCancel={event => { event.preventDefault(); setOpened(false); }}>
       <div className="cart-heading"><h2 id="cart-title">{selection ? upgrading ? "Upgrade your lease" : "Choose your lease" : "Your cart"}</h2><button type="button" aria-label={selection ? "Close lease picker" : "Close cart"} onClick={() => setOpened(false)}>×</button></div>
       {selection ? <>
@@ -98,7 +116,10 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
           const next: Item = { id: selection.id, title: selection.title, lease: selectedLease };
           if (upgrading) { void checkout([next]); return; }
           const updated = existing ? items.map(item => item.id === selection.id ? next : item) : [...items, next];
-          if (write(updated)) setOpened(false);
+          if (write(updated)) {
+            setOpened(false);
+            if (!existing) { setNotificationPaused(false); setNotification(next); }
+          }
         }}>{checkingOut ? "Opening checkout…" : !ownership.ready ? "Checking ownership…" : !selectedLease ? "All leases owned" : `${upgrading ? "Upgrade lease" : existing ? "Update lease" : "Add to cart"} · ${money(prices[selectedLease])}`}</button>
         <a className="lease-exclusive" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer"><span>Exclusive lease</span><span>DM @yearofziova ↗</span></a>
       </> : items.length ? <><ul className="cart-items">{items.map(item => <li key={item.id}><div><p>{item.title}</p><span>{leaseName(item.lease)} · {money(prices[item.lease])}</span><button type="button" className="cart-change-lease" aria-label={`${owns(item.id) ? "Upgrade" : "Change"} lease for ${item.title}`} onClick={() => choose(item)}>{owns(item.id) ? "Upgrade lease" : "Change lease"}</button></div><button type="button" aria-label={`Remove ${item.title} from cart`} onClick={() => write(items.filter(other => other.id !== item.id))}>Remove</button></li>)}</ul>
