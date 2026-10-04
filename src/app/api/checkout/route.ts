@@ -47,7 +47,12 @@ export async function POST(request: Request) {
       throw new Error("Couldn't save checkout");
     }
     return Response.json({ url:session.url });
-  } catch {
+  } catch (error) {
+    // Keep provider payloads and credentials out of logs and client responses.
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unavailable";
+    const reason = error instanceof Error && ["Payments are not configured.", "Live payments are not enabled.", "Invalid site origin."].includes(error.message)
+      ? error.message : "Checkout provider or database request failed.";
+    console.error("Checkout failed", { code, reason });
     return fail("Online checkout is unavailable right now. Please try again soon.",503);
   }
 }
