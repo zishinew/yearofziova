@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { SuccessNotification } from "@/components/success-notification";
+import { BulkUpload } from "@/components/bulk-upload";
 import { saveTrack, setTrackPublished } from "@/app/admin/actions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { audioTypes, coverTypes, bpmFromFilename, type AdminTrack } from "@/lib/track-upload";
@@ -171,6 +172,9 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
 export function AdminDashboard({ tracks, loadError }: { tracks: AdminTrack[]; loadError: boolean }) {
   const [kind, setKind] = useState<"beats" | "loops">("beats");
   const [editing, setEditing] = useState<AdminTrack | null>(null);
+  const [bulk, setBulk] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkNotification, setBulkNotification] = useState<{ count: number; kind: "beats" | "loops"; published: boolean } | null>(null);
   const [notification, setNotification] = useState<{ track: AdminTrack; created: boolean } | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -184,23 +188,26 @@ export function AdminDashboard({ tracks, loadError }: { tracks: AdminTrack[]; lo
   return <section className="admin-dashboard">
     <h1>Dashboard</h1>
     <div className="admin-tabs" role="group" aria-label="Catalog section">
-      <button type="button" aria-pressed={kind === "beats"} onClick={() => { setKind("beats"); setEditing(null); }}>Beats</button>
-      <button type="button" aria-pressed={kind === "loops"} onClick={() => { setKind("loops"); setEditing(null); }}>Loops</button>
+      <button type="button" disabled={bulkBusy} aria-pressed={kind === "beats"} onClick={() => { setKind("beats"); setEditing(null); }}>Beats</button>
+      <button type="button" disabled={bulkBusy} aria-pressed={kind === "loops"} onClick={() => { setKind("loops"); setEditing(null); }}>Loops</button>
     </div>
     {loadError ? <p className="auth-error" role="alert">Couldn’t load your tracks. Please refresh before uploading.</p> : <>
-      <div className="admin-layout">
-        <TrackForm key={`${kind}-${editing?.id || "new"}`} kind={kind} track={editing} onSaved={(track, created) => { setEditing(null); setNotification({ track, created }); }} onCancel={() => setEditing(null)} />
+      <div className="admin-upload-modes" role="group" aria-label="Upload mode"><button type="button" disabled={bulkBusy} aria-pressed={!bulk} onClick={() => setBulk(false)}>Single upload</button><button type="button" disabled={bulkBusy} aria-pressed={bulk} onClick={() => { setBulk(true); setEditing(null); }}>Folder / bulk upload</button></div>
+      {bulk && <BulkUpload key={kind} kind={kind} onBusy={setBulkBusy} onCompleted={(count, published) => { setNotification(null); setBulkNotification({ count, kind, published }); }} />}
+      <div className={`admin-layout${bulk ? " admin-layout-bulk" : ""}`}>
+        {!bulk && <TrackForm key={`${kind}-${editing?.id || "new"}`} kind={kind} track={editing} onSaved={(track, created) => { setEditing(null); setBulkNotification(null); setNotification({ track, created }); }} onCancel={() => setEditing(null)} />}
         <section className="admin-catalog"><h2>Your {kind}</h2>
           {tracks.filter(t => t.kind === kind).length === 0 && <p className="auth-message">No {kind} uploaded yet.</p>}
           <ul>{tracks.filter(t => t.kind === kind).map(track => <li key={track.id}>
             <div><h3>{track.title}</h3><p>{track.bpm} BPM · {track.published ? "Published" : "Draft"}</p></div>
-            <div className="admin-row-actions"><button type="button" onClick={() => { setEditing(track); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Edit</button>
-              <button type="button" disabled={pending} onClick={() => toggle(track)}>{track.published ? "Hide" : "Publish"}</button></div>
+            <div className="admin-row-actions"><button type="button" disabled={bulkBusy} onClick={() => { setBulk(false); setEditing(track); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Edit</button>
+              <button type="button" disabled={pending || bulkBusy} onClick={() => toggle(track)}>{track.published ? "Hide" : "Publish"}</button></div>
           </li>)}</ul>
           {error && <p className="auth-error" role="alert">{error}</p>}
         </section>
       </div>
     </>}
     {notification && <SuccessNotification key={notification.track.id} message={<>{notification.created ? "Uploaded" : "Saved"} <strong>{notification.track.title}</strong>{!notification.track.published && " as a draft"}</>} action={<Link href={`/?view=${notification.track.kind}`} prefetch={false} className="cart-notification-view">View {notification.track.kind} ↗</Link>} onDismiss={() => setNotification(null)} />}
+    {bulkNotification && <SuccessNotification message={<>Uploaded <strong>{bulkNotification.count} {bulkNotification.kind}</strong>{!bulkNotification.published && " as drafts"}</>} action={<Link href={`/?view=${bulkNotification.kind}`} prefetch={false} className="cart-notification-view">View {bulkNotification.kind} ↗</Link>} onDismiss={() => setBulkNotification(null)} />}
   </section>;
 }
