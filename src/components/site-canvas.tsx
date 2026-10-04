@@ -9,11 +9,12 @@ import { CartButton } from "@/components/shopping-cart";
 import { SoundPlaylist } from "@/components/sound-playlist";
 import { beats, loops, type Beat } from "@/data/beats";
 
-export function SiteCanvas({ skipLoader = false, beatTracks = beats, loopTracks = loops, catalogError = false }: {
+export function SiteCanvas({ skipLoader = false, initialView = "home", beatTracks = beats, loopTracks = loops, catalogError = false }: {
+  initialView?: "home" | "beats" | "loops";
   skipLoader?: boolean; beatTracks?: Beat[]; loopTracks?: Beat[]; catalogError?: boolean;
 }) {
   const { entered, canvasReady } = useSiteSession();
-  const [view, setView] = useState<"home" | "beats" | "loops">("home");
+  const [view, setView] = useState<"home" | "beats" | "loops">(initialView);
   const [phase, setPhase] = useState<"entering" | "center" | "docking" | "settled">(skipLoader || entered ? "settled" : "entering");
   const loading = phase !== "settled";
   const navigate = (next: typeof view) => startTransition(() => setView(next));

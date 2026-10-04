@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState, useTransition, type FormEvent } from "react";
+import Link from "next/link";
+import { SuccessNotification } from "@/components/success-notification";
 import { saveTrack, setTrackPublished } from "@/app/admin/actions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { audioTypes, coverTypes, bpmFromFilename, type AdminTrack } from "@/lib/track-upload";
@@ -35,7 +37,7 @@ function audioLength(file: File): Promise<number | null> {
 }
 
 function TrackForm({ kind, track, onSaved, onCancel }: {
-  kind: "beats" | "loops"; track: AdminTrack | null; onSaved: () => void; onCancel: () => void;
+  kind: "beats" | "loops"; track: AdminTrack | null; onSaved: (saved: AdminTrack, created: boolean) => void; onCancel: () => void;
 }) {
   const form = useRef<HTMLFormElement>(null);
   const [pending, startTransition] = useTransition();
@@ -124,7 +126,7 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
         autoBpm.current = null;
         setCoverCrop(null);
         setStatus(payload.published ? "Published. Your track is now in the catalog." : "Draft saved.");
-        onSaved();
+        onSaved(payload, !track);
       } catch (problem) {
         setStatus("");
         setError(problem instanceof Error ? problem.message : "Couldn't save your track. Please try again.");
@@ -169,6 +171,7 @@ function TrackForm({ kind, track, onSaved, onCancel }: {
 export function AdminDashboard({ tracks, loadError }: { tracks: AdminTrack[]; loadError: boolean }) {
   const [kind, setKind] = useState<"beats" | "loops">("beats");
   const [editing, setEditing] = useState<AdminTrack | null>(null);
+  const [notification, setNotification] = useState<{ track: AdminTrack; created: boolean } | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   function toggle(track: AdminTrack) {
@@ -186,7 +189,7 @@ export function AdminDashboard({ tracks, loadError }: { tracks: AdminTrack[]; lo
     </div>
     {loadError ? <p className="auth-error" role="alert">Couldn’t load your tracks. Please refresh before uploading.</p> : <>
       <div className="admin-layout">
-        <TrackForm key={`${kind}-${editing?.id || "new"}`} kind={kind} track={editing} onSaved={() => setEditing(null)} onCancel={() => setEditing(null)} />
+        <TrackForm key={`${kind}-${editing?.id || "new"}`} kind={kind} track={editing} onSaved={(track, created) => { setEditing(null); setNotification({ track, created }); }} onCancel={() => setEditing(null)} />
         <section className="admin-catalog"><h2>Your {kind}</h2>
           {tracks.filter(t => t.kind === kind).length === 0 && <p className="auth-message">No {kind} uploaded yet.</p>}
           <ul>{tracks.filter(t => t.kind === kind).map(track => <li key={track.id}>
@@ -198,5 +201,6 @@ export function AdminDashboard({ tracks, loadError }: { tracks: AdminTrack[]; lo
         </section>
       </div>
     </>}
+    {notification && <SuccessNotification key={notification.track.id} message={<>{notification.created ? "Uploaded" : "Saved"} <strong>{notification.track.title}</strong>{!notification.track.published && " as a draft"}</>} action={<Link href={`/?view=${notification.track.kind}`} prefetch={false} className="cart-notification-view">View {notification.track.kind} ↗</Link>} onDismiss={() => setNotification(null)} />}
   </section>;
 }
