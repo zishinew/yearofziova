@@ -29,6 +29,10 @@ export async function POST(request: Request) {
       if (error || !file) return fail("A selected download is temporarily unavailable.",409);
       orderItems.push({ ...item, product_id: product.id, title: track.title, unit_amount: LEASE_PRICES[item.lease] });
     }
+    const { data: owned, error: ownershipError } = await db.from("purchases").select("product_id")
+      .eq("user_id",user.id).eq("status","paid").in("product_id",orderItems.map(item=>item.product_id));
+    if (ownershipError) throw new Error("Ownership lookup failed");
+    if (owned?.length) return fail("You already own a selected lease. Choose an unowned format to upgrade.",409);
     const id = randomUUID();
     const amount = orderItems.reduce((sum,item)=>sum+item.unit_amount,0);
     const { error: insertError } = await db.from("checkout_orders").insert({ id,user_id:user.id,items:orderItems,amount });

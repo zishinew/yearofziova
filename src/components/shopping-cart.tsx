@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { type Beat } from "@/data/beats";
 import { LEASE_PRICES, type CheckoutItem } from "@/lib/payments";
+import { useOwnedLeases } from "@/components/use-owned-leases";
 import { useRouter } from "next/navigation";
 
 type Lease = "mp3" | "wav";
@@ -16,7 +17,7 @@ function subscribe(callback: () => void) {
   window.addEventListener("storage", callback); window.addEventListener(changed, callback);
   return () => { window.removeEventListener("storage", callback); window.removeEventListener(changed, callback); };
 }
-const CartContext = createContext<{ items: Item[]; add: (beat: Beat) => void; remove: (id: string) => void; open: () => void }>({ items: [], add: () => {}, remove: () => {}, open: () => {} });
+const CartContext = createContext<{ items: Item[]; owns: (id: string, lease?: Lease) => boolean; ownershipReady: boolean; add: (beat: Beat) => void; remove: (id: string) => void; open: () => void }>({ items: [], owns: () => false, ownershipReady: false, add: () => {}, remove: () => {}, open: () => {} });
 const money = (cents: number) => `$${(cents / 100).toFixed(2)} CAD`;
 
 export function clearPurchasedCartItems(purchased: CheckoutItem[]) {
@@ -30,6 +31,9 @@ export function clearPurchasedCartItems(purchased: CheckoutItem[]) {
 
 export function ShoppingCart({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const ownership = useOwnedLeases();
+  const owns = (id: string, format?: Lease) => ownership.items.some(item => item.id === id && (!format || item.lease === format));
+  useEffect(() => { if (ownership.ready && ownership.items.length) clearPurchasedCartItems(ownership.items); }, [ownership]);
   const [checkingOut, setCheckingOut] = useState(false);
   const raw = useSyncExternalStore(subscribe, snapshot, () => "[]");
   const items = useMemo<Item[]>(() => {
@@ -75,23 +79,27 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
     } catch (problem) { setError(problem instanceof Error ? problem.message : "Couldn't start checkout."); }
     finally { setCheckingOut(false); }
   }
+  const available = (["mp3", "wav"] as const).filter(option => !selection || !owns(selection.id, option));
+  const selectedLease = available.includes(lease) ? lease : available[0];
+  const upgrading = selection ? owns(selection.id) : false;
   const existing = selection ? items.some(item => item.id === selection.id) : false;
-  return <CartContext.Provider value={{ items, add: choose, remove: id => write(items.filter(item => item.id !== id)), open: () => { setSelection(null); setError(""); setOpened(true); } }}>
+  return <CartContext.Provider value={{ items, owns, ownershipReady: ownership.ready, add: choose, remove: id => write(items.filter(item => item.id !== id)), open: () => { setSelection(null); setError(""); setOpened(true); } }}>
     {children}
     {opened && <dialog ref={dialog} className="cart-dialog" aria-labelledby="cart-title" onCancel={event => { event.preventDefault(); setOpened(false); }}>
-      <div className="cart-heading"><h2 id="cart-title">{selection ? "Choose your lease" : "Your cart"}</h2><button type="button" aria-label={selection ? "Close lease picker" : "Close cart"} onClick={() => setOpened(false)}>×</button></div>
+      <div className="cart-heading"><h2 id="cart-title">{selection ? upgrading ? "Upgrade your lease" : "Choose your lease" : "Your cart"}</h2><button type="button" aria-label={selection ? "Close lease picker" : "Close cart"} onClick={() => setOpened(false)}>×</button></div>
       {selection ? <>
         <p className="lease-track-title">{selection.title}</p>
         <fieldset className="lease-options"><legend className="sr-only">Lease format</legend>
-          {(["mp3", "wav"] as const).map(option => <label key={option} className="lease-option"><input type="radio" name="lease" value={option} checked={lease === option} onChange={() => setLease(option)} /><span>{leaseName(option)}</span><span>{money(prices[option])}</span></label>)}
+          {(["mp3", "wav"] as const).map(option => <label key={option} className={`lease-option ${owns(selection.id, option) ? "lease-option-owned" : ""}`}><input type="radio" name="lease" value={option} checked={selectedLease === option} disabled={!ownership.ready || owns(selection.id, option)} onChange={() => setLease(option)} /><span>{leaseName(option)}</span><span>{owns(selection.id, option) ? "Owned ✓" : money(prices[option])}</span></label>)}
         </fieldset>
-        <button type="button" className="lease-confirm" onClick={() => {
-          const next: Item = { id: selection.id, title: selection.title, lease };
+        <button type="button" className="lease-confirm" disabled={!ownership.ready || !selectedLease} onClick={() => {
+          if (!selectedLease || owns(selection.id, selectedLease)) return;
+          const next: Item = { id: selection.id, title: selection.title, lease: selectedLease };
           const updated = existing ? items.map(item => item.id === selection.id ? next : item) : [...items, next];
           if (write(updated)) setOpened(false);
-        }}>{existing ? "Update lease" : "Add to cart"} · {money(prices[lease])}</button>
+        }}>{!ownership.ready ? "Checking ownership…" : !selectedLease ? "All leases owned" : `${upgrading ? "Upgrade lease" : existing ? "Update lease" : "Add to cart"} · ${money(prices[selectedLease])}`}</button>
         <a className="lease-exclusive" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer"><span>Exclusive lease</span><span>DM @yearofziova ↗</span></a>
-      </> : items.length ? <><ul className="cart-items">{items.map(item => <li key={item.id}><div><p>{item.title}</p><span>{leaseName(item.lease)} · {money(prices[item.lease])}</span><button type="button" className="cart-change-lease" aria-label={`Change lease for ${item.title}`} onClick={() => choose(item)}>Change lease</button></div><button type="button" aria-label={`Remove ${item.title} from cart`} onClick={() => write(items.filter(other => other.id !== item.id))}>Remove</button></li>)}</ul>
+      </> : items.length ? <><ul className="cart-items">{items.map(item => <li key={item.id}><div><p>{item.title}</p><span>{leaseName(item.lease)} · {money(prices[item.lease])}</span><button type="button" className="cart-change-lease" aria-label={`${owns(item.id) ? "Upgrade" : "Change"} lease for ${item.title}`} onClick={() => choose(item)}>{owns(item.id) ? "Upgrade lease" : "Change lease"}</button></div><button type="button" aria-label={`Remove ${item.title} from cart`} onClick={() => write(items.filter(other => other.id !== item.id))}>Remove</button></li>)}</ul>
         <div className="cart-total"><span>Total</span><span>{money(items.reduce((total, item) => total + prices[item.lease], 0))}</span></div>
         <button className="lease-confirm" type="button" disabled={checkingOut} onClick={checkout}>{checkingOut ? "Opening checkout…" : "Checkout ↗"}</button>
         <p className="cart-note">Purchases are saved to your account.</p>

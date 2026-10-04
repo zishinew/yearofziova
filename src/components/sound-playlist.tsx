@@ -14,7 +14,9 @@ function TrackRow({ track, kind }: { track: Beat; kind: "beats" | "loops" }) {
   const playback = usePlayback();
   const playing = playback.track?.id === track.id && playback.playing;
   const cart = useCart();
+  const owned = cart.owns(track.id);
   const added = cart.items.some(item => item.id === track.id);
+  const label = owned ? "Upgrade lease" : added ? "Change lease" : "Add to cart";
   return <article className={`playlist-track playlist-compact-row ${playing ? "playlist-track-playing" : ""}`}>
     <button type="button" className="playlist-summary" onClick={() => playback.play(track)} disabled={!track.audioUrl} aria-label={`${playing ? "Pause" : "Play"} ${track.title}`} aria-pressed={playing}>
       <span className="playlist-identity">
@@ -25,7 +27,7 @@ function TrackRow({ track, kind }: { track: Beat; kind: "beats" | "loops" }) {
       <span className="playlist-number"><span className="sr-only">BPM: </span>{track.bpm}</span>
       <span className="playlist-number"><span className="sr-only">Duration: </span>{duration(track.durationSeconds)}</span>
     </button>
-    {kind === "beats" ? <button type="button" className="track-add" aria-label={added ? `Change lease for ${track.title}` : `Choose lease for ${track.title}`} onClick={() => cart.add(track)}>{added ? "Change lease" : "Add to cart"}</button> : <a className="track-loop-inquiry" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer">Inquire ↗</a>}
+    {kind === "beats" ? <button type="button" className="track-add" aria-label={`${label} for ${track.title}`} onClick={() => cart.add(track)}>{label}</button> : <a className="track-loop-inquiry" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer">Inquire ↗</a>}
   </article>;
 }
 export function SoundPlaylist({ kind, tracks, loadError = false }: { kind: "beats" | "loops"; tracks: Beat[]; loadError?: boolean }) {

@@ -320,3 +320,7 @@ body:has(.auth-dialog[open]) .playbar { filter: blur(8px); }
 .lease-exclusive { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid #17171710; font-size: 11px; color: #737373; }
 .lease-exclusive:hover { color: #e8227a; }
 .cart-items li .cart-change-lease { margin-top: 10px; color: #525252; }
+
+.lease-option-owned { color: #aaa; background: #f5f5f5; cursor: default; }
+.lease-option-owned input { opacity: .4; }
+.lease-confirm:disabled { opacity: .45; cursor: default; }
