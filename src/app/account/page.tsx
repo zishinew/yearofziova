@@ -1,10 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { AccountShell } from "@/components/account-shell";
 import { DownloadsSync } from "@/components/downloads-sync";
 import { DownloadButton } from "@/components/download-button";
 import { logout } from "@/app/auth/actions";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { groupDownloads } from "@/lib/download-library";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +16,11 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: purchases, error } = await supabase.from("purchases")
-    .select("id, purchased_at, download_products!inner(id, title, bpm, lease)")
+    .select("id, purchased_at, download_products!inner(id, title, bpm, lease, catalog_track_id, catalog_tracks(cover_path))")
     .eq("user_id", user.id).eq("status", "paid").order("purchased_at", { ascending: false });
   const params = await searchParams;
   const { data: admin } = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
+  const downloads = groupDownloads(purchases || []);
 
   return (
     <AccountShell>
@@ -30,12 +33,18 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         {params.error === "signout" && <p className="auth-error" role="alert">Couldn’t sign out. Please try again.</p>}
         {error ? <p className="auth-error" role="alert">Couldn’t load your downloads. Please refresh and try again.</p> : purchases?.length ? (
           <ul className="downloads-list" aria-live="polite">
-            {purchases.map((purchase) => {
-              const product = Array.isArray(purchase.download_products) ? purchase.download_products[0] : purchase.download_products;
-              if (!product) return null;
-              return <li key={purchase.id}>
-                <div><h2>{product.title}</h2><p>{product.bpm ? `${product.bpm} BPM` : "Purchased beat"}{product.lease ? ` · ${product.lease.toUpperCase()} lease` : ""}</p></div>
-                <DownloadButton purchaseId={purchase.id} />
+            {downloads.map((entry) => {
+              const cover = entry.coverPath ? supabase.storage.from("track-covers").getPublicUrl(entry.coverPath).data.publicUrl : null;
+              return <li key={entry.id}>
+                <div className="download-track">
+                  <div className="download-cover">
+                    {cover ? <Image src={cover} alt="" fill sizes="80px" /> : <Image src="/eye transparent.png" alt="" width={48} height={48} />}
+                  </div>
+                  <div><h2>{entry.title}</h2><p>{entry.bpm ? `${entry.bpm} BPM` : "Purchased file"}</p></div>
+                </div>
+                <div className="download-formats">
+                  {entry.downloads.map(download => <DownloadButton key={download.purchaseId} purchaseId={download.purchaseId} label={download.lease ? `Download ${download.lease.toUpperCase()} ↓` : "Download ↓"} />)}
+                </div>
               </li>;
             })}
           </ul>

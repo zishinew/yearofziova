@@ -94,6 +94,15 @@ body:has(.auth-dialog[open]) .account-content { filter: blur(8px); }
 .downloads-list li { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-block: 24px; border-top: 1px solid #e5e5e5; }
 .downloads-list h2 { font-size: 14px; font-weight: 400; }
 .downloads-list p { font-size: 11px; color: #888; margin-top: 6px; }
+.download-track { display: flex; align-items: center; gap: 20px; min-width: 0; }
+.download-track h2 { overflow-wrap: anywhere; }
+.download-cover { position: relative; width: 80px; height: 80px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #fafafa; border-radius: 4px; overflow: hidden; }
+.download-cover img { object-fit: cover; }
+.download-formats { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 16px 24px; }
+@media (max-width: 600px) {
+  .downloads-list li { flex-wrap: wrap; }
+  .download-formats { width: 100%; justify-content: flex-start; padding-left: 100px; }
+}
 .download-control { text-align: right; max-width: 240px; }
 .download-control button { font-size: 12px; cursor: pointer; white-space: nowrap; }
 .download-control button:disabled { color: #999; cursor: default; }
