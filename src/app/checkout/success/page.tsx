@@ -31,6 +31,6 @@ export default async function CheckoutSuccess({ searchParams }: { searchParams:P
     <CheckoutStatus paid={paid} pending={pending} items={parseCheckoutItems(order?.items) || []} />
     <h1>{paid ? "Thank you." : pending ? "Confirming your payment…" : "Payment status"}</h1>
     <p className="auth-message">{paid ? "Your beats are ready in My Downloads." : pending ? "Your downloads will appear once payment is confirmed. You can safely leave this page." : order?.status === "refunded" ? "This order has been refunded." : "We couldn't find a completed purchase for this account. Check My Downloads or DM @yearofziova."}</p>
-    <Link href="/account" className="auth-text-link">My Downloads ↗</Link>
+    <Link href="/account" prefetch={false} className="auth-text-link">My Downloads ↗</Link>
   </section></AccountShell>;
 }

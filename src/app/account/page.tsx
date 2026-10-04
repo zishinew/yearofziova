@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AccountShell } from "@/components/account-shell";
+import { DownloadsSync } from "@/components/downloads-sync";
 import { DownloadButton } from "@/components/download-button";
 import { logout } from "@/app/auth/actions";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -20,6 +21,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
 
   return (
     <AccountShell>
+      <DownloadsSync userId={user.id} revision={(purchases || []).map(p => p.id).sort().join(",")} />
       <section className="downloads-library">
         {admin && <Link href="/admin" className="admin-entry">Admin dashboard ↗</Link>}
         <div className="downloads-heading"><div><h1>My Downloads</h1><p>{user.email}</p></div>
@@ -27,7 +29,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         </div>
         {params.error === "signout" && <p className="auth-error" role="alert">Couldn’t sign out. Please try again.</p>}
         {error ? <p className="auth-error" role="alert">Couldn’t load your downloads. Please refresh and try again.</p> : purchases?.length ? (
-          <ul className="downloads-list">
+          <ul className="downloads-list" aria-live="polite">
             {purchases.map((purchase) => {
               const product = Array.isArray(purchase.download_products) ? purchase.download_products[0] : purchase.download_products;
               if (!product) return null;
