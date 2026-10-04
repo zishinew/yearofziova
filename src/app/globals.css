@@ -331,8 +331,8 @@ body:has(.auth-dialog[open]) .playbar { filter: blur(8px); }
 .payment-spinner { width: 28px; height: 28px; border: 2px solid #ff2d8d25; border-top-color: #ff2d8d; border-radius: 50%; animation: payment-spin 800ms linear infinite; }
 @keyframes payment-spin { to { transform: rotate(360deg); } }
 .purchase-receipt { max-width: 960px; animation: page-arrive 260ms ease-out; }
-.purchase-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 24px; margin-bottom: 36px; }
-.purchase-card { overflow: hidden; border: 1px solid #17171712; border-radius: 12px; background: #ffffffc9; }
+.purchase-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; margin-bottom: 36px; }
+.purchase-card { flex: 0 1 304px; min-width: 0; max-width: 100%; overflow: hidden; border: 1px solid #17171712; border-radius: 12px; background: #ffffffc9; }
 .purchase-cover { position: relative; aspect-ratio: 1; display: grid; place-items: center; background: #fff3f8; }
 .purchase-cover > img:not(.purchase-cover-placeholder) { object-fit: cover; }
 .purchase-cover-placeholder { object-fit: contain; }
