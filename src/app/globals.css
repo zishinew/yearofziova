@@ -330,7 +330,20 @@ body:has(.auth-dialog[open]) .playbar { filter: blur(8px); }
 .payment-confirming p { color: #888; font-size: 12px; }
 .payment-spinner { width: 28px; height: 28px; border: 2px solid #ff2d8d25; border-top-color: #ff2d8d; border-radius: 50%; animation: payment-spin 800ms linear infinite; }
 @keyframes payment-spin { to { transform: rotate(360deg); } }
-.purchase-receipt { animation: page-arrive 260ms ease-out; }
+.purchase-receipt { max-width: 960px; animation: page-arrive 260ms ease-out; }
+.purchase-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 24px; margin-bottom: 36px; }
+.purchase-card { overflow: hidden; border: 1px solid #17171712; border-radius: 12px; background: #ffffffc9; }
+.purchase-cover { position: relative; aspect-ratio: 1; display: grid; place-items: center; background: #fff3f8; }
+.purchase-cover > img:not(.purchase-cover-placeholder) { object-fit: cover; }
+.purchase-cover-placeholder { object-fit: contain; }
+.purchase-card-body { display: flex; flex-direction: column; gap: 24px; padding: 22px; }
+.purchase-card-details h2 { font-size: 19px; font-weight: 400; overflow-wrap: anywhere; }
+.purchase-card-details p { font-size: 11px; color: #888; margin-top: 8px; }
+.purchase-card .download-control { max-width: none; text-align: left; }
+.purchase-card .download-control button { width: 100%; padding: 14px 16px; border-radius: 5px; background: #171717; color: #fff; transition: background 160ms ease; }
+.purchase-card .download-control button:hover:not(:disabled) { background: #e8227a; }
+.purchase-card .download-control button:disabled { opacity: .5; }
+.purchase-card .download-control .auth-error { margin-top: 10px; }
 .purchase-total { display: flex; justify-content: space-between; font-size: 12px; padding-top: 20px; border-top: 1px solid #e5e5e5; }
 .purchase-note { margin: 20px 0 28px; font-size: 11px; line-height: 1.8; color: #888; }
 @media (prefers-reduced-motion: reduce) { .payment-spinner, .purchase-receipt { animation: none; } }

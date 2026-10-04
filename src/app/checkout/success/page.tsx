@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { AccountShell } from "@/components/account-shell";
 import { PaymentConfirming } from "@/components/payment-confirming";
@@ -30,7 +31,7 @@ export default async function CheckoutSuccess({ searchParams }: { searchParams:P
   const paid = order?.status === "paid";
   const pending = order?.status === "pending";
   const { data: purchases, error: downloadError } = paid && order
-    ? await supabase.from("purchases").select("id,product_id,download_products!inner(title,bpm,lease)")
+    ? await supabase.from("purchases").select("id,product_id,download_products!inner(title,bpm,lease,catalog_tracks(cover_path))")
       .eq("checkout_order_id",order.id).eq("user_id",user.id).eq("status","paid")
     : { data:null, error:null };
   return <AccountShell>
@@ -41,14 +42,21 @@ export default async function CheckoutSuccess({ searchParams }: { searchParams:P
         <p>{paid ? "Payment confirmed. Your files are ready." : order?.status === "refunded" ? "This order has been refunded." : "We couldn't find a completed purchase for this account."}</p>
       </div></div>
       {paid && <>
-        {downloadError || !purchases?.length ? <p className="auth-error" role="alert">Couldn’t load your files. They are also available in My Downloads.</p> : <ul className="downloads-list">
+        {downloadError || !purchases?.length ? <p className="auth-error" role="alert">Couldn’t load your files. They are also available in My Downloads.</p> : <ul className="purchase-grid">
           {purchases.map(purchase => {
             const product = Array.isArray(purchase.download_products) ? purchase.download_products[0] : purchase.download_products;
             if (!product) return null;
             const snapshot = Array.isArray(order?.items) ? order.items.find((item: {product_id:string}) => item.product_id === purchase.product_id) : null;
-            return <li key={purchase.id}>
-              <div><h2>{snapshot?.title || product.title}</h2><p>{product.lease ? `${product.lease.toUpperCase()} lease` : "Purchased file"}{product.bpm ? ` · ${product.bpm} BPM` : ""}</p></div>
-              <DownloadButton purchaseId={purchase.id} label={product.lease ? `Download ${product.lease.toUpperCase()} ↓` : undefined} />
+            const track = Array.isArray(product.catalog_tracks) ? product.catalog_tracks[0] : product.catalog_tracks;
+            const cover = track?.cover_path ? supabase.storage.from("track-covers").getPublicUrl(track.cover_path).data.publicUrl : null;
+            return <li key={purchase.id} className="purchase-card">
+              <div className="purchase-cover">
+                {cover ? <Image src={cover} alt="" fill sizes="(max-width: 600px) 90vw, (max-width: 900px) 45vw, 320px" /> : <Image src="/eye transparent.png" alt="" width={120} height={120} className="purchase-cover-placeholder" />}
+              </div>
+              <div className="purchase-card-body">
+                <div className="purchase-card-details"><h2>{snapshot?.title || product.title}</h2><p>{product.lease ? `${product.lease.toUpperCase()} lease` : "Purchased file"}{product.bpm ? ` · ${product.bpm} BPM` : ""}</p></div>
+                <DownloadButton purchaseId={purchase.id} label={product.lease ? `Download ${product.lease.toUpperCase()} ↓` : undefined} />
+              </div>
             </li>;
           })}
         </ul>}
