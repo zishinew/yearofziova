@@ -10,3 +10,9 @@ next-env.d.ts
 .vercel/
 npm-debug.log*
 supabase/.temp/
+
+# Private keys and certificate bundles
+*.pem
+*.key
+*.p12
+*.pfx
