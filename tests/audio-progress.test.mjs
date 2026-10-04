@@ -1,0 +1,33 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { test } from "node:test";
+import ts from "typescript";
+const source = await readFile(new URL("../src/lib/audio-progress.ts",import.meta.url),"utf8");
+const compiled = ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const { watchAudioProgress } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`);
+
+test("smooth progress runs only during visible playback and cleans up every listener and frame", t => {
+  const previous = {document:globalThis.document,raf:globalThis.requestAnimationFrame,cancel:globalThis.cancelAnimationFrame};
+  const document = new EventTarget(); document.visibilityState = "visible";
+  const audio = new EventTarget(); Object.assign(audio,{paused:false,ended:false,currentTime:0});
+  const frames = new Map(); let id=0; const values=[];
+  globalThis.document=document;
+  globalThis.requestAnimationFrame=callback=>{frames.set(++id,callback);return id;};
+  globalThis.cancelAnimationFrame=id=>frames.delete(id);
+  t.after(()=>{globalThis.document=previous.document;globalThis.requestAnimationFrame=previous.raf;globalThis.cancelAnimationFrame=previous.cancel;});
+  const cleanup=watchAudioProgress(audio,value=>values.push(value));
+  assert.equal(frames.size,1);
+  const frame=[...frames.entries()][0]; frames.delete(frame[0]); audio.currentTime=.016; frame[1]();
+  assert.equal(values.at(-1),.016); assert.equal(frames.size,1);
+  audio.dispatchEvent(new Event("waiting")); assert.equal(frames.size,0);
+  audio.dispatchEvent(new Event("playing")); assert.equal(frames.size,1);
+  document.visibilityState="hidden"; document.dispatchEvent(new Event("visibilitychange")); assert.equal(frames.size,0);
+  audio.currentTime=8; document.visibilityState="visible"; document.dispatchEvent(new Event("visibilitychange"));
+  assert.equal(values.at(-1),8); assert.equal(frames.size,1);
+  audio.paused=true; audio.dispatchEvent(new Event("pause")); assert.equal(frames.size,0);
+  audio.currentTime=20; audio.dispatchEvent(new Event("seeked")); assert.equal(values.at(-1),20); assert.equal(frames.size,0);
+  audio.paused=false; audio.dispatchEvent(new Event("play")); assert.equal(frames.size,1);
+  audio.ended=true; audio.dispatchEvent(new Event("ended")); assert.equal(frames.size,0);
+  cleanup(); const count=values.length; audio.dispatchEvent(new Event("timeupdate"));document.dispatchEvent(new Event("visibilitychange"));
+  assert.equal(values.length,count); assert.equal(frames.size,0);
+});
