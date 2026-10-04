@@ -63,7 +63,7 @@ insert into public.purchases (user_id, product_id, source, order_reference)
 values ('CONFIRMED_CUSTOMER_AUTH_UUID', 'YOUR_CATALOG_ID', 'instagram', 'YOUR_VERIFIED_ORDER_REFERENCE');
 ```
 
-Purchase grants are created by the signature-verified Stripe webhook, never by the browser or a checkout success URL. The library reads verified grants; login alone does not unlock anything. See [STRIPE_SETUP.md](STRIPE_SETUP.md) for credentials, sandbox testing and deployment setup.
+Purchase grants are created by the signature-verified Stripe webhook or by Stripe-verified server fulfillment on the authenticated return page. Browser claims and checkout URLs alone never grant access. The library reads verified grants; login alone does not unlock anything. See [STRIPE_SETUP.md](STRIPE_SETUP.md) for credentials, sandbox testing and deployment setup.
 
 The app uses cookie sessions, server-verified identity, row-level security, and 60-second signed download links. Customers cannot grant themselves purchases, read another customer's purchases, upload files, or download unowned/refunded deliverables. An already-issued signed link remains valid until it expires.
 

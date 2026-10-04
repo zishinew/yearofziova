@@ -5,6 +5,7 @@ import { paymentServices } from "@/lib/stripe";
 export async function fulfillSession(sessionId: string, refunded = false) {
   const { stripe, db } = paymentServices();
   const session = await stripe.checkout.sessions.retrieve(sessionId);
+  if (session.livemode !== (process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_") ?? false)) throw new Error("Stripe environment mismatch");
   if (!refunded && session.payment_status !== "paid") return;
   if (session.mode !== "payment" || !session.metadata?.order_id || !session.client_reference_id) throw new Error("Invalid checkout session");
   const intent = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
