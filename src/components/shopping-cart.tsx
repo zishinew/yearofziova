@@ -68,10 +68,11 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
     element?.showModal();
     return () => { element?.close(); document.body.style.overflow = overflow; };
   }, [opened]);
-  async function checkout() {
+  async function checkout(checkoutItems: Item[] = items) {
+    if (checkingOut) return;
     setCheckingOut(true); setError("");
     try {
-      const response = await fetch("/api/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({items:items.map(({id,lease})=>({id,lease}))}) });
+      const response = await fetch("/api/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({items:checkoutItems.map(({id,lease})=>({id,lease}))}) });
       const result = await response.json();
       if (response.status === 401) { setOpened(false); router.push("/login", {scroll:false}); return; }
       if (!response.ok || !result.url) throw new Error(result.error || "Couldn't start checkout.");
@@ -90,18 +91,19 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
       {selection ? <>
         <p className="lease-track-title">{selection.title}</p>
         <fieldset className="lease-options"><legend className="sr-only">Lease format</legend>
-          {(["mp3", "wav"] as const).map(option => <label key={option} className={`lease-option ${owns(selection.id, option) ? "lease-option-owned" : ""}`}><input type="radio" name="lease" value={option} checked={selectedLease === option} disabled={!ownership.ready || owns(selection.id, option)} onChange={() => setLease(option)} /><span>{leaseName(option)}</span><span>{owns(selection.id, option) ? "Owned ✓" : money(prices[option])}</span></label>)}
+          {(["mp3", "wav"] as const).map(option => <label key={option} className={`lease-option ${owns(selection.id, option) ? "lease-option-owned" : ""}`}><input type="radio" name="lease" value={option} checked={selectedLease === option} disabled={checkingOut || !ownership.ready || owns(selection.id, option)} onChange={() => setLease(option)} /><span>{leaseName(option)}</span><span>{owns(selection.id, option) ? "Owned ✓" : money(prices[option])}</span></label>)}
         </fieldset>
-        <button type="button" className="lease-confirm" disabled={!ownership.ready || !selectedLease} onClick={() => {
+        <button type="button" className="lease-confirm" disabled={checkingOut || !ownership.ready || !selectedLease} onClick={() => {
           if (!selectedLease || owns(selection.id, selectedLease)) return;
           const next: Item = { id: selection.id, title: selection.title, lease: selectedLease };
+          if (upgrading) { void checkout([next]); return; }
           const updated = existing ? items.map(item => item.id === selection.id ? next : item) : [...items, next];
           if (write(updated)) setOpened(false);
-        }}>{!ownership.ready ? "Checking ownership…" : !selectedLease ? "All leases owned" : `${upgrading ? "Upgrade lease" : existing ? "Update lease" : "Add to cart"} · ${money(prices[selectedLease])}`}</button>
+        }}>{checkingOut ? "Opening checkout…" : !ownership.ready ? "Checking ownership…" : !selectedLease ? "All leases owned" : `${upgrading ? "Upgrade lease" : existing ? "Update lease" : "Add to cart"} · ${money(prices[selectedLease])}`}</button>
         <a className="lease-exclusive" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer"><span>Exclusive lease</span><span>DM @yearofziova ↗</span></a>
       </> : items.length ? <><ul className="cart-items">{items.map(item => <li key={item.id}><div><p>{item.title}</p><span>{leaseName(item.lease)} · {money(prices[item.lease])}</span><button type="button" className="cart-change-lease" aria-label={`${owns(item.id) ? "Upgrade" : "Change"} lease for ${item.title}`} onClick={() => choose(item)}>{owns(item.id) ? "Upgrade lease" : "Change lease"}</button></div><button type="button" aria-label={`Remove ${item.title} from cart`} onClick={() => write(items.filter(other => other.id !== item.id))}>Remove</button></li>)}</ul>
         <div className="cart-total"><span>Total</span><span>{money(items.reduce((total, item) => total + prices[item.lease], 0))}</span></div>
-        <button className="lease-confirm" type="button" disabled={checkingOut} onClick={checkout}>{checkingOut ? "Opening checkout…" : "Checkout ↗"}</button>
+        <button className="lease-confirm" type="button" disabled={checkingOut} onClick={() => { void checkout(); }}>{checkingOut ? "Opening checkout…" : "Checkout ↗"}</button>
         <p className="cart-note">Purchases are saved to your account.</p>
       </> : <p className="cart-note">Your cart is empty.</p>}
       {error && <p className="auth-error" role="alert">{error}</p>}
