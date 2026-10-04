@@ -126,6 +126,10 @@ body:has(.auth-dialog[open]) .account-content { filter: blur(8px); }
 .admin-row-actions { display: flex; gap: 16px; font-size: 11px; }
 .admin-row-actions button { cursor: pointer; }
 .admin-row-actions button:disabled { opacity: 0.4; cursor: default; }
+.admin-preview { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; cursor: pointer; color: #737373; }
+.admin-preview[aria-pressed="true"] { color: #e8227a; }
+.admin-preview:disabled { opacity: .4; cursor: default; }
+.admin-editor > .admin-preview, .bulk-entry > .admin-preview { margin-bottom: 20px; }
 .admin-upload-modes { display: flex; gap: 20px; margin-bottom: 28px; font-size: 12px; }
 .admin-upload-modes button { color: #888; cursor: pointer; padding-bottom: 8px; border-bottom: 1px solid transparent; }
 .admin-upload-modes button[aria-pressed="true"] { color: #171717; border-color: #ff2d8d; }

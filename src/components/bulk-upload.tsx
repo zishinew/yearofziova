@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { planBulkUpload } from "@/lib/bulk-upload-plan";
 import { bulkTrackError, uploadBulkTrack, type BulkTrack } from "@/lib/bulk-track-upload";
+import { AdminPreview } from "@/components/admin-preview";
 
 type Entry = BulkTrack & { tags: string; notes: string; status: "queued" | "uploading" | "done" | "error"; message: string };
 function entryDetails(entry: Entry) {
@@ -87,6 +88,7 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
       {entries.length > 0 && <ul className="bulk-queue" aria-label="Upload queue">
         {entries.map(entry => <li key={entry.id} className={`bulk-entry bulk-entry-${entry.status}`}>
           <div className="bulk-file-name">{entry.file.webkitRelativePath || entry.file.name}</div>
+          <AdminPreview id={`admin-upload-${entry.id}`} title={entry.title} bpm={Number(entry.bpm)} file={kind === "beats" ? entry.file : entry.preview} />
           <fieldset disabled={busy || entry.status === "done"} className="admin-fields">
             <div className="bulk-entry-fields"><label>Title<input value={entry.title} maxLength={120} onChange={event => update(entry.id, { title: event.target.value, status: "queued", message: "" })} /></label><label>BPM<input type="number" min={1} max={400} step={1} value={entry.bpm} onChange={event => update(entry.id, { bpm: event.target.value, status: "queued", message: "" })} /></label></div>
             <label>Tags<span className="admin-hint">Separate with commas</span><input value={entry.tags} maxLength={2400} onChange={event => update(entry.id, { tags: event.target.value, status: "queued", message: "" })} /></label>

@@ -2,17 +2,19 @@
 
 import Image from "next/image";
 import { PlaybackIcon } from "@/components/playback-icon";
-import { createContext, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Beat } from "@/data/beats";
 
-type Playback = { track: Beat | null; playing: boolean; play: (track: Beat) => void };
-const PlaybackContext = createContext<Playback>({ track: null, playing: false, play: () => {} });
+type Playback = { track: Beat | null; playing: boolean; play: (track: Beat) => void; playFile: (track: Beat, file: File) => void };
+const PlaybackContext = createContext<Playback>({ track: null, playing: false, play: () => {}, playFile: () => {} });
 function time(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 }
 export function AudioPlayer({ children }: { children: ReactNode }) {
   const audio = useRef<HTMLAudioElement>(null);
   const request = useRef(0);
+  const localSource = useRef<{ file: File; url: string } | null>(null);
+  useEffect(() => () => { if (localSource.current) URL.revokeObjectURL(localSource.current.url); }, []);
   const [track, setTrack] = useState<Beat | null>(null);
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0);
@@ -46,12 +48,24 @@ export function AudioPlayer({ children }: { children: ReactNode }) {
     request.current++;
     player.pause();
     player.src = next.audioUrl;
+    releaseLocalSource();
     player.volume = volume;
     setTrack(next);
     setPlaying(false);
     setPosition(0);
     setLength(0);
     void resume();
+  }
+  function releaseLocalSource() {
+    if (localSource.current) URL.revokeObjectURL(localSource.current.url);
+    localSource.current = null;
+  }
+  function playFile(next: Beat, file: File) {
+    if (!audio.current) return;
+    if (track?.id === next.id && localSource.current?.file === file) { toggle(); return; }
+    const url = URL.createObjectURL(file);
+    play({ ...next, audioUrl: url });
+    localSource.current = { file, url };
   }
   function changeVolume(next: number) {
     setVolume(next);
@@ -64,6 +78,7 @@ export function AudioPlayer({ children }: { children: ReactNode }) {
     player?.pause();
     player?.removeAttribute("src");
     player?.load();
+    releaseLocalSource();
     setTrack(null);
     setPlaying(false);
     setPosition(0);
@@ -71,7 +86,7 @@ export function AudioPlayer({ children }: { children: ReactNode }) {
     setError("");
   }
   const shownLength = length || track?.durationSeconds || 0;
-  return <PlaybackContext.Provider value={{ track, playing, play }}>
+  return <PlaybackContext.Provider value={{ track, playing, play, playFile }}>
     {children}
     <audio ref={audio} preload="metadata" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
       onTimeUpdate={event => setPosition(event.currentTarget.currentTime)}
