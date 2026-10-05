@@ -46,6 +46,17 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 
 Use the CLI's signing secret locally while forwarding. It differs from the deployed endpoint secret. Restore the endpoint secret for deployment.
 
+## Live webhook
+
+Created on 2026-10-05 in **yearofziova**, live account `acct_1UMJdBE0sGTMCleh`:
+
+- Endpoint ID: `we_1UNGWdE0sGTMClehOoA5ByBF`
+- URL: `https://www.yearofziova.com/api/stripe/webhook`
+- API version: `2026-09-30.endive`
+- Events: the same five payment/refund events listed for the sandbox endpoint above.
+
+The live signing secret is saved only in ignored `.env.local`. Set that value as `STRIPE_WEBHOOK_SECRET` in Vercel's **Production** environment, alongside the live `STRIPE_SECRET_KEY`, `STRIPE_LIVE_PAYMENTS=true`, `SITE_URL=https://www.yearofziova.com`, and the Supabase server credentials. Redeploy after changing environment variables. The live endpoint and the restricted key's Checkout/Charge/PaymentIntent read permissions have been verified. Production webhook delivery and a real customer checkout remain unverified; the deployed route still reported “Webhook not configured” before these deployment changes.
+
 ## Verification before accepting real payments
 
 1. Add server credentials, restart the dev server and upload at least one MP3/WAV lease file.
