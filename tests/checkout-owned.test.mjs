@@ -66,3 +66,27 @@ test("admin checkout is blocked before creating an order or calling Stripe", asy
     assert.equal(providerCalled,false);
   } finally { delete globalThis.ownedCheckoutFixture; }
 });
+
+test("preview checkout is restricted to the dedicated sandbox account and fails closed without configuration", async () => {
+  const previous = {environment:process.env.VERCEL_ENV,user:process.env.STRIPE_SANDBOX_USER_ID};
+  process.env.VERCEL_ENV="preview";
+  globalThis.ownedCheckoutFixture = {
+    auth:{auth:{getUser:async()=>({data:{user:{id:"sandbox-user",email_confirmed_at:"confirmed"}}})},from:()=>({select(){return this;},eq(){return this;},maybeSingle:async()=>({data:null,error:null})})},
+    get services(){throw Error("Stripe should not be called");},
+  };
+  const request=()=>new Request("http://localhost:3000/api/checkout",{method:"POST",headers:{origin:"http://localhost:3000","content-type":"application/json"},body:JSON.stringify({items:[]})});
+  try {
+    delete process.env.STRIPE_SANDBOX_USER_ID;
+    assert.equal((await POST(request())).status,503);
+    process.env.STRIPE_SANDBOX_USER_ID="different-customer";
+    assert.equal((await POST(request())).status,403);
+    process.env.STRIPE_SANDBOX_USER_ID="sandbox-user";
+    const response=await POST(request());
+    assert.equal(response.status,400);
+    assert.match((await response.json()).error,/Check the beats/);
+  } finally {
+    if(previous.environment===undefined)delete process.env.VERCEL_ENV;else process.env.VERCEL_ENV=previous.environment;
+    if(previous.user===undefined)delete process.env.STRIPE_SANDBOX_USER_ID;else process.env.STRIPE_SANDBOX_USER_ID=previous.user;
+    delete globalThis.ownedCheckoutFixture;
+  }
+});

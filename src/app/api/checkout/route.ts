@@ -14,6 +14,11 @@ export async function POST(request: Request) {
     const { data: admin, error: adminError } = await supabase!.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
     if (adminError) throw new Error("Admin membership lookup failed");
     if (admin) return fail("Admin accounts cannot purchase beats. Edit tracks from your catalog instead.", 403);
+    if (process.env.VERCEL_ENV === "preview") {
+      const testUser = process.env.STRIPE_SANDBOX_USER_ID;
+      if (!testUser) return fail("Sandbox checkout is being configured.", 503);
+      if (user.id !== testUser) return fail("Use the dedicated sandbox test account for this preview.", 403);
+    }
     if (Number(request.headers.get("content-length")) > 16384) return fail("Cart is too large.");
     const body = await request.json();
     const items = parseCheckoutItems(body.items);

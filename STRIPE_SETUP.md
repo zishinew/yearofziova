@@ -68,3 +68,20 @@ The live signing secret is saved only in ignored `.env.local`. Set that value as
 Automated tests cover price/input validation and database permissions, delivery isolation, duplicate fulfillment, mismatched payment rejection, refunds and repurchases. Payment end-to-end verification requires the merchant credentials and deliverables above.
 
 References: [Hosted Checkout](https://docs.stripe.com/payments/accept-a-payment?payment-ui=checkout&ui=stripe-hosted), [fulfillment](https://docs.stripe.com/checkout/fulfillment?payment-ui=stripe-hosted), [webhooks](https://docs.stripe.com/webhooks), [Supabase API keys](https://supabase.com/docs/guides/api/api-keys).
+
+## Isolated sandbox preview
+
+The `codex/stripe-sandbox` branch adds two preview-only checks: Vercel Preview deployments reject live Stripe keys, and preview checkout accepts only the dedicated test customer's user ID. Production checkout behavior stays the same. The test customer's confirmed email, password and UUID are saved in ignored `.env.sandbox-test.local`; it has no admin membership.
+
+Configure **Preview variables scoped to `codex/stripe-sandbox`**:
+
+- `STRIPE_SECRET_KEY`: sandbox `rk_test_` or `sk_test_` server key.
+- `STRIPE_LIVE_PAYMENTS=false`.
+- `STRIPE_SANDBOX_USER_ID`: `TEST_USER_ID` from `.env.sandbox-test.local`.
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SECRET_KEY`: existing project credentials.
+- `SITE_URL`: the stable preview URL, without a trailing slash.
+- `STRIPE_WEBHOOK_SECRET`: the signing secret of a **sandbox** webhook pointing to that preview URL's `/api/stripe/webhook`.
+
+The webhook requires a publicly reachable route; if preview deployment protection is enabled, configure an appropriate preview-only automation bypass for webhook delivery. A return-page confirmation alone does not prove webhook delivery.
+
+After redeploying with preview credentials, sign in with the dedicated test account. Complete Stripe Checkout with `4242 4242 4242 4242`, any future expiry and a three-digit CVC. Verify the purchased format, confirmation page, My Downloads and signed download, then repeat for the other format. Keep test grants on this dedicated account and do not use a real customer's login. Do not change Production environment variables for this test.

@@ -8,6 +8,9 @@ export function paymentServices() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const mode = stripeKeyMode(stripeKey);
   if (!stripeKey || !mode || !supabaseKey || !url) throw new Error("Payments are not configured.");
+  if (process.env.VERCEL_ENV === "preview" && mode !== "test") {
+    throw new Error("Preview deployments require sandbox Stripe credentials.");
+  }
   // Live payments require an explicit deployment opt-in after sandbox verification.
   if (mode === "live" && process.env.STRIPE_LIVE_PAYMENTS !== "true") throw new Error("Live payments are not enabled.");
   return {
