@@ -1,13 +1,15 @@
 import "server-only";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import { stripeKeyMode } from "@/lib/stripe-mode";
 export function paymentServices() {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   const supabaseKey = process.env.SUPABASE_SECRET_KEY;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!stripeKey || !supabaseKey || !url) throw new Error("Payments are not configured.");
+  const mode = stripeKeyMode(stripeKey);
+  if (!stripeKey || !mode || !supabaseKey || !url) throw new Error("Payments are not configured.");
   // Live payments require an explicit deployment opt-in after sandbox verification.
-  if (!stripeKey.startsWith("sk_test_") && process.env.STRIPE_LIVE_PAYMENTS !== "true") throw new Error("Live payments are not enabled.");
+  if (mode === "live" && process.env.STRIPE_LIVE_PAYMENTS !== "true") throw new Error("Live payments are not enabled.");
   return {
     stripe: new Stripe(stripeKey, { maxNetworkRetries: 2 }),
     db: createClient(url, supabaseKey, { auth: { persistSession: false, autoRefreshToken: false } }),

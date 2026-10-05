@@ -1,11 +1,12 @@
 import "server-only";
 import type Stripe from "stripe";
 import { paymentServices } from "@/lib/stripe";
+import { stripeKeyMode } from "@/lib/stripe-mode";
 
 export async function fulfillSession(sessionId: string, refunded = false) {
   const { stripe, db } = paymentServices();
   const session = await stripe.checkout.sessions.retrieve(sessionId);
-  if (session.livemode !== (process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_") ?? false)) throw new Error("Stripe environment mismatch");
+  if (session.livemode !== (stripeKeyMode(process.env.STRIPE_SECRET_KEY) === "live")) throw new Error("Stripe environment mismatch");
   if (!refunded && session.payment_status !== "paid") return;
   if (session.mode !== "payment" || !session.metadata?.order_id || !session.client_reference_id) throw new Error("Invalid checkout session");
   const intent = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
@@ -27,7 +28,7 @@ export async function fulfillSession(sessionId: string, refunded = false) {
 }
 export async function processPaymentEvent(event: Stripe.Event) {
   const { stripe, db } = paymentServices();
-  if (event.livemode !== (process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_") ?? false)) throw new Error("Stripe environment mismatch");
+  if (event.livemode !== (stripeKeyMode(process.env.STRIPE_SECRET_KEY) === "live")) throw new Error("Stripe environment mismatch");
   if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
     await fulfillSession((event.data.object as Stripe.Checkout.Session).id);
   } else if (event.type === "checkout.session.expired" || event.type === "checkout.session.async_payment_failed") {

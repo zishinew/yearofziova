@@ -4,9 +4,9 @@ The Stripe implementation planner was run and its hosted Checkout recommendation
 
 ## Integration
 
-- MP3 lease: $24.99 CAD. WAV lease: $34.99 CAD. Exclusive leases remain Instagram DM inquiries. Loops remain inquiry-only.
+- MP3 lease: $24.99 CAD. WAV lease: $34.99 CAD. Exclusive leases remain Instagram DM inquiries. Loops are free downloads after agreement to the loop terms.
 - Customers sign in with a confirmed email before checkout. The server validates published beats, lease deliverables and fixed prices, then creates an order and Stripe-hosted Checkout Session. Dynamic payment methods are enabled through Stripe's dashboard; adaptive currency conversion is disabled to charge CAD.
-- Upload one WAV in the admin dashboard: the browser creates a 320 kbps MP3 and stores both private lease files. Unless you supply a custom preview, it also creates a public preview of the first 30 seconds. Old single-file/manual purchases still work. An old file does not automatically become an MP3 or WAV product: upload a WAV to enable both formats.
+- Upload one WAV in the admin dashboard: the browser creates a 320 kbps MP3 and stores both private lease files. The full generated MP3 is used for public playback. Old single-file/manual purchases still work. An old file does not automatically become an MP3 or WAV product: upload a WAV to enable both formats.
 - Raw-body, signature-verified webhooks retrieve current Stripe state, verify order owner, amount, currency and line items, then grant purchases in a transaction. A database lock and unique order/product constraint prevent repeated grants. Failed processing returns HTTP 500 for Stripe retries.
 - The authenticated return page invokes the same server fulfillment function for an owned pending order, independently verifying the payment with Stripe. A URL or client-supplied payment status alone never grants access. Webhooks remain required for customers who do not return, delayed payments and refunds. The return page polls order status; only paid orders clear the matching items from the cart. Purchased files appear in My Downloads with short-lived signed download links.
 - Full refunds revoke that order's downloads. Partial refunds retain access. Refunds cannot be undone by an older payment event. A separate later purchase can grant access again.
@@ -17,11 +17,13 @@ Set these on the server, locally in `.env.local` and in the deployment environme
 
 | Variable | Value |
 | --- | --- |
-| `STRIPE_SECRET_KEY` | Secret API key from **yearofziova sandbox**, starting with `sk_test_` |
+| `STRIPE_SECRET_KEY` | Server key: `sk_test_` or `rk_test_` in sandbox; `sk_live_` or `rk_live_` in production |
 | `STRIPE_WEBHOOK_SECRET` | Signing secret for the matching webhook endpoint |
 | `SUPABASE_SECRET_KEY` | Server secret key for the yearofziova Supabase project |
-| `SITE_URL` | `http://localhost:3000` locally; `https://yearofziova.com` on deployment |
+| `SITE_URL` | `http://localhost:3000` locally; `https://www.yearofziova.com` on deployment (the canonical domain) |
 | `STRIPE_LIVE_PAYMENTS` | Leave `false` until the live integration has been configured and verified |
+
+Restricted keys must permit the Checkout Session, Product, and Price operations used to create Checkout, plus reads for Charges and PaymentIntents used for refunds. Missing permissions cause checkout or fulfillment failures. Keep live and sandbox purchase data separate or remove verified sandbox grants before launch. Updating `.env.local` does not update Vercel: set production environment variables and redeploy.
 
 Hosted Checkout does not require a Stripe publishable key in the frontend. MCP account authorization does not supply your site's API key.
 
@@ -50,7 +52,7 @@ Use the CLI's signing secret locally while forwarding. It differs from the deplo
 2. Sign in as a customer, pay in the sandbox, confirm the correct format appears in My Downloads, and verify another account cannot access it.
 3. Verify a declined payment creates no downloads; test asynchronous payment completion, webhook retries, and a full refund.
 4. Deployment must have the webhook route and matching signing secret. Confirm successful event delivery in Stripe Workbench.
-5. For live payments, use a live secret API key and separate live webhook endpoint/secret, and set `STRIPE_LIVE_PAYMENTS=true`. Complete Stripe account activation and configure your licensing/refund terms and applicable taxes before launch.
+5. For live payments, use a live server API key (`sk_live_` or `rk_live_`) and a separate live webhook endpoint/secret, and set `STRIPE_LIVE_PAYMENTS=true`. The live endpoint must target `https://www.yearofziova.com/api/stripe/webhook` directly and subscribe to the same events listed above. Complete Stripe account activation and configure your licensing/refund terms and applicable taxes before launch.
 
 Automated tests cover price/input validation and database permissions, delivery isolation, duplicate fulfillment, mismatched payment rejection, refunds and repurchases. Payment end-to-end verification requires the merchant credentials and deliverables above.
 
