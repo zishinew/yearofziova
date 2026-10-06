@@ -94,7 +94,7 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,items:checkoutItems.map(({id,lease})=>({id,lease}))}) });
       const result = await response.json();
-      
+
       if (!response.ok || !result.url) throw new Error(result.error || "Couldn't start checkout.");
       window.location.assign(result.url);
     } catch (problem) { setError(problem instanceof Error ? problem.message : "Couldn't start checkout."); }
