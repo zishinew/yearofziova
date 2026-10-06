@@ -71,7 +71,7 @@ References: [Hosted Checkout](https://docs.stripe.com/payments/accept-a-payment?
 
 ## Isolated sandbox preview
 
-The `codex/stripe-sandbox` branch adds two preview-only checks: Vercel Preview deployments reject live Stripe keys, and preview checkout accepts only the dedicated test customer's user ID. Production checkout behavior stays the same. The test customer's confirmed email, password and UUID are saved in ignored `.env.sandbox-test.local`; it has no admin membership.
+The `codex/stripe-sandbox` branch adds two preview-only checks: Vercel Preview deployments reject live Stripe keys, and preview checkout accepts only the dedicated test customer's user ID. The test customer's confirmed email, password and UUID are saved in ignored `.env.sandbox-test.local`; it has no admin membership. Checkout explicitly uses standard Stripe payments with fixed CAD prices, overriding the sandbox account's Managed Payments default.
 
 Configure **Preview variables scoped to `codex/stripe-sandbox`**:
 
@@ -85,3 +85,14 @@ Configure **Preview variables scoped to `codex/stripe-sandbox`**:
 The webhook requires a publicly reachable route; if preview deployment protection is enabled, configure an appropriate preview-only automation bypass for webhook delivery. A return-page confirmation alone does not prove webhook delivery.
 
 After redeploying with preview credentials, sign in with the dedicated test account. Complete Stripe Checkout with `4242 4242 4242 4242`, any future expiry and a three-digit CVC. Verify the purchased format, confirmation page, My Downloads and signed download, then repeat for the other format. Keep test grants on this dedicated account and do not use a real customer's login. Do not change Production environment variables for this test.
+
+### Verified sandbox deployment — October 5, 2026
+
+- Preview: `https://yearofziova-git-codex-stripe-sandbox-zishines-projects.vercel.app`.
+- The six sandbox overrides are saved as secret variables scoped only to `codex/stripe-sandbox`. Public Supabase settings are inherited from the existing Preview environment.
+- Sandbox endpoint `we_1UNOgFEI9Cu5u6qq0W9b4sMm` targets the preview webhook with the merchant-created Vercel automation bypass. Signing and bypass secrets remain in ignored local files and provider settings.
+- The obsolete sandbox endpoint targeting the production domain is disabled. The separate live endpoint and Production environment variables are unchanged.
+- A non-admin customer purchased `breathe` with the MP3 lease using the Stripe test card. Stripe confirmed `livemode=false`, `payment_status=paid`, and `2499` CAD minor units.
+- The actual payment webhook returned HTTP 200 on the preview. Invalid webhook signatures returned HTTP 400.
+- The confirmation page displayed the cover, MP3 lease and download button. My Downloads displayed the purchase without a manual refresh. Both browser downloads completed as real MP3 files, each 5,500,342 bytes with identical SHA-256 hashes.
+- This run verified the MP3 purchase and redownload flow; it did not make a live payment or test the WAV upgrade flow.
