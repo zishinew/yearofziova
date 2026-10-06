@@ -417,4 +417,8 @@ body:has(.auth-dialog[open]) .playbar { filter: blur(8px); }
 .cart-note a { text-decoration: underline; text-underline-offset: 3px; }
 .vault-landing { position: relative; }
 .landing-socials { position: absolute; bottom: 32px; left: 0; width: 100%; display: flex; justify-content: center; flex-wrap: wrap; gap: 24px; padding: 0 24px; color: #777; font-size: 11px; }
-.landing-socials a:hover { color: var(--accent, #ff0080); }
+.landing-socials a, .landing-socials button { display: grid; place-items: center; width: 40px; height: 40px; cursor: pointer; transition: color 150ms ease; }
+.landing-socials svg { width: 21px; height: 21px; }
+.landing-socials a:hover, .landing-socials button:hover { color: var(--accent); }
+.social-copy { position: relative; }
+.social-copy-indicator { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10px; color: var(--accent); }

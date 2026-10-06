@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { startTransition, useEffect, useState } from "react";
+import { SocialLinks } from "@/components/social-links";
 import { PageTransition } from "@/components/page-transition";
 import { useSiteSession } from "@/components/site-session";
 import { CartButton } from "@/components/shopping-cart";
@@ -42,11 +43,7 @@ export function SiteCanvas({ skipLoader = false, initialView = "home", beatTrack
               <button type="button" onClick={() => navigate("beats")}>Beat Vault</button>
               <button type="button" onClick={() => navigate("loops")}>Loop Kit</button>
             </div>
-            <nav className="landing-socials" aria-label="Socials">
-              <a href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer">Instagram ↗</a>
-              <a href="https://www.tiktok.com/@yearofziova" target="_blank" rel="noreferrer">TikTok ↗</a>
-              <span>Discord: yearofziova</span>
-            </nav>
+            <SocialLinks />
             </>
           ) : <SoundPlaylist key={view} kind={view} tracks={view === "beats" ? beatTracks : loopTracks} loadError={catalogError} />}
         </main>
