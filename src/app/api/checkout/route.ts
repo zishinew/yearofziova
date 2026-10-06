@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     const { error: insertError } = await db.from("checkout_orders").insert({ id,user_id:user.id,items:orderItems,amount });
     if (insertError) throw insertError;
     const session = await stripe.checkout.sessions.create({
-      mode:"payment", adaptive_pricing:{ enabled:false }, client_reference_id:user.id, customer_email:user.email,
+      mode:"payment", managed_payments:{ enabled:false }, adaptive_pricing:{ enabled:false }, client_reference_id:user.id, customer_email:user.email,
       metadata:{ order_id:id }, payment_intent_data:{ metadata:{ order_id:id } },
       success_url:`${siteOrigin()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url:`${siteOrigin()}/`,
