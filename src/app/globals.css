@@ -49,7 +49,7 @@ body {
 .site-fluid { position: fixed; inset: 0; width: 100vw; height: 100dvh; z-index: -1; pointer-events: none; opacity: 0.32; }
 .vault-landing { min-height: 100dvh; display: grid; place-items: center; }
 .vault-choices { display: flex; align-items: center; justify-content: center; gap: clamp(64px, 14vw, 220px); padding: 24px; }
-.vault-choices button { cursor: pointer; font-family: "Courier New", monospace; font-size: 16px; padding: 24px 12px; transition: color 180ms, transform 180ms; }
+.vault-choices button { cursor: pointer; font-family: "Courier New", monospace; font-size: 16px; padding: 24px 12px; transition: color 300ms ease, transform 180ms; }
 .vault-choices button:hover { color: var(--accent); transform: translateY(-4px); }
 .vault-content { min-height: 100dvh; padding-top: 96px; }
 .vault-header { position: fixed; inset: 0 0 auto; height: 96px; z-index: 60; pointer-events: none; background: transparent; }
@@ -256,7 +256,7 @@ body:has(.auth-dialog[open]) .account-content { filter: blur(8px); }
 @media (prefers-reduced-motion: reduce) {
   .auth-dialog[open] { animation: none; }
   .page-transition { animation: none; }
-  .vault-choices button { transition: color 180ms; }
+  .vault-choices button { transition: color 300ms ease; }
   .vault-choices button:hover { transform: none; }
   .playlist-details { animation: none; }
   html { scroll-behavior: auto; }
@@ -417,7 +417,7 @@ body:has(.auth-dialog[open]) .playbar { filter: blur(8px); }
 .cart-note a { text-decoration: underline; text-underline-offset: 3px; }
 .vault-landing { position: relative; }
 .landing-socials { position: absolute; bottom: 32px; left: 0; width: 100%; display: flex; justify-content: center; flex-wrap: wrap; gap: 24px; padding: 0 24px; color: #777; font-size: 11px; }
-.landing-socials a, .landing-socials button { display: grid; place-items: center; width: 40px; height: 40px; cursor: pointer; transition: color 150ms ease; }
+.landing-socials a, .landing-socials button { display: grid; place-items: center; width: 40px; height: 40px; cursor: pointer; transition: color 300ms ease; }
 .landing-socials svg { width: 21px; height: 21px; }
 .landing-socials a:hover, .landing-socials button:hover { color: var(--accent); }
 .social-copy { position: relative; }
@@ -434,3 +434,5 @@ body:has(.auth-dialog[open]) .playbar { filter: blur(8px); }
   .social-copy-bubble { animation-name: social-bubble-fade; }
 }
 @keyframes social-bubble-fade { 0%, 100% { opacity: 0; } 10%, 90% { opacity: 1; } }
+
+.auth-close, .auth-text-link, .auth-switch, .admin-delete, .track-inquiry, .header-actions a, .header-cart, .lease-exclusive { transition: color 300ms ease; }
