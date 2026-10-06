@@ -48,7 +48,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                   <div><h2>{entry.title}</h2><p>{entry.bpm ? `${entry.bpm} BPM` : "Purchased file"}</p></div>
                 </div>
                 <div className="download-formats">
-                  {entry.downloads.map(download => <DownloadButton key={download.purchaseId} purchaseId={download.purchaseId} label={download.lease ? `Download ${download.lease.toUpperCase()} ↓` : "Download ↓"} />)}
+                  {entry.downloads.map(download => <DownloadButton key={`${download.purchaseId}-${download.lease}`} format={download.lease === "mp3" || download.lease === "wav" ? download.lease : undefined} purchaseId={download.purchaseId} label={download.lease ? `Download ${download.lease.toUpperCase()} ↓` : "Download ↓"} />)}
                 </div>
               </li>;
             })}

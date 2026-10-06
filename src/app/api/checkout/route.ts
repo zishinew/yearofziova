@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const { data: tracks, error: trackError } = await db.from("catalog_tracks").select("id,title").eq("published",true).eq("kind","beats").in("id",items.map(i=>i.id));
     const { data: products, error: productError } = await db.from("download_products").select("id,catalog_track_id,lease,storage_path").in("catalog_track_id",items.map(i=>i.id));
     if (trackError || productError) throw new Error("Catalog lookup failed");
-    const orderItems = [];
+    const orderItems: { id: string; lease: "mp3" | "wav"; product_id: string; title: string; unit_amount: number }[] = [];
     for (const item of items) {
       const track = tracks?.find(t=>t.id===item.id);
       const product = products?.find(p=>p.catalog_track_id===item.id && p.lease===item.lease);
@@ -36,21 +36,24 @@ export async function POST(request: Request) {
       if (error || !file) return fail("A selected download is temporarily unavailable.",409);
       orderItems.push({ ...item, product_id: product.id, title: track.title, unit_amount: LEASE_PRICES[item.lease] });
     }
-    const { data: owned, error: ownershipError } = user ? await db.from("purchases").select("product_id")
-      .eq("user_id",user.id).eq("status","paid").in("product_id",orderItems.map(item=>item.product_id)) : { data: null, error: null };
+    const { data: owned, error: ownershipError } = user ? await db.from("purchases").select("product_id,download_products!inner(catalog_track_id,lease)")
+      .eq("user_id",user.id).eq("status","paid").in("download_products.catalog_track_id",orderItems.map(item=>item.id)) : { data: null, error: null };
     if (ownershipError) throw new Error("Ownership lookup failed");
-    if (owned?.length) return fail("You already own a selected lease. Choose an unowned format to upgrade.",409);
+    if (owned?.some(purchase => {
+      const product = Array.isArray(purchase.download_products) ? purchase.download_products[0] : purchase.download_products;
+      return orderItems.some(item => item.product_id === purchase.product_id || (item.lease === "mp3" && product?.lease === "wav" && product.catalog_track_id === item.id));
+    })) return fail("You already own a selected lease. Choose an unowned format to upgrade.",409);
     const id = randomUUID();
     const token = user ? null : newGuestToken();
     const amount = orderItems.reduce((sum,item)=>sum+item.unit_amount,0);
-    const { error: insertError } = await db.from("checkout_orders").insert({ id,user_id:user?.id || null,guest_email: token ? email : null,guest_token_hash: token ? guestTokenHash(token) : null,items:orderItems,amount });
+    const { error: insertError } = await db.from("checkout_orders").insert({ id,user_id:user?.id || null,guest_email: token ? email : null,guest_token_hash: token ? guestTokenHash(token) : null,items:orderItems,amount,currency:"usd" });
     if (insertError) throw insertError;
     const session = await stripe.checkout.sessions.create({
       mode:"payment", managed_payments:{ enabled:false }, adaptive_pricing:{ enabled:false }, client_reference_id:user?.id || id, customer_email:email,
       metadata:{ order_id:id }, payment_intent_data:{ metadata:{ order_id:id } },
       success_url:`${siteOrigin()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url:`${siteOrigin()}/`,
-      line_items:orderItems.map(item=>({ quantity:1,price_data:{ currency:"cad",unit_amount:item.unit_amount,
+      line_items:orderItems.map(item=>({ quantity:1,price_data:{ currency:"usd",unit_amount:item.unit_amount,
         product_data:{ name:`${item.title} · ${item.lease.toUpperCase()} lease`,metadata:{ product_id:item.product_id } } } })),
     },{ idempotencyKey:`checkout:${id}` });
     const { error: saveError } = await db.from("checkout_orders").update({ stripe_session_id:session.id }).eq("id",id);

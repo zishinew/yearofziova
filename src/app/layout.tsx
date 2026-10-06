@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     shortcut: "/icon?v=2",
     apple: "/icon.png?v=2",
   },
-  description: "Explore the Beat Vault and Loop Kit by ziova. Beats are $24.99 CAD. DM @yearofziova on Instagram for inquiries.",
+  description: "Explore the Beat Vault and Loop Kit by ziova. Beats are $24.99 USD. DM @yearofziova on Instagram for inquiries.",
 };
 
 export default async function RootLayout({

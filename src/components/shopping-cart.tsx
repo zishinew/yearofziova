@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { type Beat } from "@/data/beats";
 import { LEASE_PRICES, type CheckoutItem } from "@/lib/payments";
+import { LeaseDetails } from "@/components/lease-details";
 import { useOwnedLeases } from "@/components/use-owned-leases";
 import Link from "next/link";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
@@ -21,7 +22,7 @@ function subscribe(callback: () => void) {
   return () => { window.removeEventListener("storage", callback); window.removeEventListener(changed, callback); };
 }
 const CartContext = createContext<{ items: Item[]; owns: (id: string, lease?: Lease) => boolean; ownershipReady: boolean; add: (beat: Beat) => void; remove: (id: string) => void; open: () => void }>({ items: [], owns: () => false, ownershipReady: false, add: () => {}, remove: () => {}, open: () => {} });
-const money = (cents: number) => `$${(cents / 100).toFixed(2)} CAD`;
+const money = (cents: number) => `$${(cents / 100).toFixed(2)} USD`;
 
 export function clearPurchasedCartItems(purchased: CheckoutItem[]) {
   try {
@@ -114,6 +115,7 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
         <fieldset className="lease-options"><legend className="sr-only">Lease format</legend>
           {(["mp3", "wav"] as const).map(option => <label key={option} className={`lease-option ${owns(selection.id, option) ? "lease-option-owned" : ""}`}><input type="radio" name="lease" value={option} checked={selectedLease === option} disabled={checkingOut || !ownership.ready || owns(selection.id, option)} onChange={() => setLease(option)} /><span>{leaseName(option)}</span><span>{owns(selection.id, option) ? "Owned ✓" : money(prices[option])}</span></label>)}
         </fieldset>
+        {selectedLease && <LeaseDetails lease={selectedLease} />}
         <button type="button" className="lease-confirm" disabled={checkingOut || !ownership.ready || !selectedLease} onClick={() => {
           if (!selectedLease || owns(selection.id, selectedLease)) return;
           const next: Item = { id: selection.id, title: selection.title, lease: selectedLease };
@@ -124,7 +126,7 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
             if (!existing) setNotification(next);
           }
         }}>{checkingOut ? "Opening checkout…" : !ownership.ready ? "Checking ownership…" : !selectedLease ? "All leases owned" : `${upgrading ? "Upgrade lease" : existing ? "Update lease" : "Add to cart"} · ${money(prices[selectedLease])}`}</button>
-        <a className="lease-exclusive" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer"><span>Exclusive lease</span><span>DM @yearofziova ↗</span></a>
+        <a className="lease-exclusive" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer"><span>Unlimited / Exclusive license</span><span>DM @yearofziova ↗</span></a>
       </> : items.length ? <><ul className="cart-items">{items.map(item => <li key={item.id}><div><p>{item.title}</p><span>{leaseName(item.lease)} · {money(prices[item.lease])}</span><button type="button" className="cart-change-lease" aria-label={`${owns(item.id) ? "Upgrade" : "Change"} lease for ${item.title}`} onClick={() => choose(item)}>{owns(item.id) ? "Upgrade lease" : "Change lease"}</button></div><button type="button" aria-label={`Remove ${item.title} from cart`} onClick={() => write(items.filter(other => other.id !== item.id))}>Remove</button></li>)}</ul>
         <div className="cart-total"><span>Total</span><span>{money(items.reduce((total, item) => total + prices[item.lease], 0))}</span></div>
         <label className="checkout-email">Email<input type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" required /></label>

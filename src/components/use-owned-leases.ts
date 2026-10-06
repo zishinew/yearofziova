@@ -24,6 +24,7 @@ export function useOwnedLeases() {
         const product = Array.isArray(purchase.download_products) ? purchase.download_products[0] : purchase.download_products;
         if (product?.catalog_track_id && (product.lease === "mp3" || product.lease === "wav") && !items.some(i => i.id === product.catalog_track_id && i.lease === product.lease)) {
           items.push({ id: product.catalog_track_id, lease: product.lease });
+          if (product.lease === "wav" && !items.some(i => i.id === product.catalog_track_id && i.lease === "mp3")) items.push({ id: product.catalog_track_id, lease: "mp3" });
         }
       }
       items.sort((a,b) => `${a.id}:${a.lease}`.localeCompare(`${b.id}:${b.lease}`));

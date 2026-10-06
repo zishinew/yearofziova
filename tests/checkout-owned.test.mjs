@@ -19,14 +19,15 @@ test("checkout rejects an already-owned format but allows a different lease", as
   const previous = process.env.STRIPE_WEBHOOK_SECRET;
   process.env.STRIPE_WEBHOOK_SECRET = "test-fixture";
   let sessions = 0;
+  let ownedLease = "mp3";
   const db = {
     from(table) {
       const query = {
         select() { return query; }, eq() { return query; },
-        async in(_field, values) {
+        async in() {
           if(table === "catalog_tracks") return {data:[{id,title:"Beat"}]};
           if(table === "download_products") return {data:["mp3","wav"].map(lease=>({id:`${id}:${lease}`,catalog_track_id:id,lease,storage_path:`file.${lease}`}))};
-          if(table === "purchases") return {data:values.includes(`${id}:mp3`) ? [{product_id:`${id}:mp3`}] : []};
+          if(table === "purchases") return {data:[{product_id:`${id}:${ownedLease}`,download_products:{catalog_track_id:id,lease:ownedLease}}]};
           throw Error("Unexpected query");
         },
         async insert() { return {error:null}; },
@@ -47,6 +48,10 @@ test("checkout rejects an already-owned format but allows a different lease", as
     assert.match((await owned.json()).error,/already own/);
     const upgrade = await POST(request("wav"));
     assert.equal(upgrade.status,200); assert.equal(sessions,1);
+    ownedLease = "wav";
+    assert.equal((await POST(request("mp3"))).status,409);
+    assert.equal((await POST(request("wav"))).status,409);
+    assert.equal(sessions,1);
   } finally {
     if(previous === undefined) delete process.env.STRIPE_WEBHOOK_SECRET; else process.env.STRIPE_WEBHOOK_SECRET=previous;
     delete globalThis.ownedCheckoutFixture;
@@ -85,6 +90,8 @@ test("guest checkout uses email without an account and issues a private order co
   assert.equal(savedOrder,undefined);
   assert.equal((await POST(request(" Guest@Example.com "))).status,200);
   assert.equal(savedOrder.user_id,null);
+  assert.equal(savedOrder.currency,"usd");
+  assert.equal(sessionParams.line_items[0].price_data.currency,"usd");
   assert.equal(savedOrder.guest_email,"guest@example.com");
   assert.equal(sessionParams.client_reference_id,savedOrder.id);
   assert.equal(sessionParams.customer_email,savedOrder.guest_email);

@@ -19,7 +19,7 @@ export default async function CheckoutSuccess({ searchParams }: { searchParams:P
   const { db } = paymentServices();
   const { session_id } = await searchParams;
   const findOrder = async () => {
-    const result = await db.from("checkout_orders").select("id,user_id,guest_token_hash,status,items,amount").eq("stripe_session_id",session_id || "").maybeSingle();
+    const result = await db.from("checkout_orders").select("id,user_id,guest_token_hash,status,items,amount,currency").eq("stripe_session_id",session_id || "").maybeSingle();
     return { data: result.data && await ownsOrder(result.data, user?.email_confirmed_at ? user.id : undefined) ? result.data : null };
   };
   let { data:order } = session_id && /^cs_[a-zA-Z0-9_]+$/.test(session_id)
@@ -62,12 +62,12 @@ export default async function CheckoutSuccess({ searchParams }: { searchParams:P
               </div>
               <div className="purchase-card-body">
                 <div className="purchase-card-details"><h2>{snapshot?.title || product.title}</h2><p>{product.lease ? `${product.lease.toUpperCase()} lease` : "Purchased file"}{product.bpm ? ` · ${product.bpm} BPM` : ""}</p></div>
-                <DownloadButton purchaseId={purchase.id} label={product.lease ? `Download ${product.lease.toUpperCase()} ↓` : undefined} />
+                <div className="receipt-download-formats">{product.lease === "wav" && <DownloadButton purchaseId={purchase.id} format="mp3" label="Download MP3 ↓" />}<DownloadButton purchaseId={purchase.id} label={product.lease ? `Download ${product.lease.toUpperCase()} ↓` : undefined} /></div>
               </div>
             </li>;
           })}
         </ul>}
-        <p className="purchase-total">Total paid <span>${((order?.amount || 0) / 100).toFixed(2)} CAD</span></p>
+        <p className="purchase-total">Total paid <span>${((order?.amount || 0) / 100).toFixed(2)} {order?.currency.toUpperCase()}</span></p>
         <p className="purchase-note">{user ? "You can redownload these files anytime from your account." : "Keep this page to redownload in this browser. Create an account and verify the same checkout email for access on any device."}</p>
       </>}
       <Link href={user ? "/account" : "/login?signup=1"} prefetch={false} className="auth-text-link">{user ? "My Downloads ↗" : "Create an account for easier access ↗"}</Link>

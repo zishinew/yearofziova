@@ -18,4 +18,4 @@ export type Beat = {
 export const beats: Beat[] = [];
 
 export const loops: Beat[] = [];
-export const BEAT_PRICE_CAD = 24.99;
+export const BEAT_PRICE_USD = 24.99;

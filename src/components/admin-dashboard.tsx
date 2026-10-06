@@ -176,7 +176,7 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
           </> : <label>Free loop download<span className="admin-hint">Audio or ZIP · up to 50 MB · downloads require agreement to your terms · optional; keeps the current download or uses playback audio</span>
             <input name="download" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac,.zip" onChange={event => readFilename(event.target.files?.[0])} /></label>}
           {!track && <p className="admin-hint">Uploading publishes this track in your catalog.</p>}
-          {kind === "beats" && <p className="admin-hint">MP3 $24.99 CAD · WAV $34.99 CAD. Upload a WAV to enable both leases.</p>}
+          {kind === "beats" && <p className="admin-hint">MP3 $24.99 USD · WAV $34.99 USD. Upload a WAV to enable both leases.</p>}
           <button className="auth-submit" type="submit" disabled={coverLoading}>{coverLoading ? "Opening cover…" : pending ? status || "Please wait…" : track ? "Save changes" : "Upload & publish"}</button>
         </fieldset>
         {error && <p className="auth-error" role="alert">{error}</p>}

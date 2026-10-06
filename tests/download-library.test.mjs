@@ -18,10 +18,11 @@ test("groups formats by beat with cover, keeps newest grant and orders MP3 befor
   assert.deepEqual(entries[0].downloads, [{ purchaseId: "mp3", lease: "mp3" }, { purchaseId: "new-wav", lease: "wav" }]);
 });
 
-test("same-titled beats remain separate and a single lease grants only its own format", () => {
+test("same-titled beats remain separate; WAV includes MP3 and MP3 cannot grant WAV", () => {
   const entries = groupDownloads([purchase("a", "wav"), purchase("b", "mp3", "beat-b")]);
   assert.equal(entries.length, 2);
-  assert.deepEqual(entries[0].downloads, [{ purchaseId: "a", lease: "wav" }]);
+  assert.deepEqual(entries[1].downloads, [{ purchaseId: "b", lease: "mp3" }]);
+  assert.deepEqual(entries[0].downloads, [{ purchaseId: "a", lease: "mp3" }, { purchaseId: "a", lease: "wav" }]);
 });
 
 test("legacy unlinked products stay distinct and missing catalog art retains downloads", () => {

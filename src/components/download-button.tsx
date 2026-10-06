@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { downloadPurchase } from "@/app/account/download-action";
 
-export function DownloadButton({ purchaseId, label = "Download ↓" }: { purchaseId: string; label?: string }) {
+export function DownloadButton({ purchaseId, label = "Download ↓", format }: { purchaseId: string; label?: string; format?: "mp3" | "wav" }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
   return (
@@ -12,7 +12,7 @@ export function DownloadButton({ purchaseId, label = "Download ↓" }: { purchas
         setError("");
         startTransition(async () => {
           try {
-            const result = await downloadPurchase(purchaseId);
+            const result = await downloadPurchase(purchaseId, format);
             if (result.url) window.location.assign(result.url);
             else setError(result.error || "Couldn't prepare your download.");
           } catch {

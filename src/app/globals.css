@@ -436,3 +436,21 @@ body:has(.auth-dialog[open]) .playbar { filter: blur(8px); }
 @keyframes social-bubble-fade { 0%, 100% { opacity: 0; } 10%, 90% { opacity: 1; } }
 
 .auth-close, .auth-text-link, .auth-switch, .admin-delete, .track-inquiry, .header-actions a, .header-cart, .lease-exclusive { transition: color 300ms ease; }
+
+.lease-details { margin-top: 20px; padding-top: 18px; border-top: 1px solid #eee; }
+.lease-details h3 { font-size: 12px; font-weight: 400; }
+.lease-files { margin-top: 8px; color: #777; font-size: 11px; }
+.lease-limits { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 18px 0; }
+.lease-limits dt { color: #777; font-size: 10px; }
+.lease-limits dd { margin-top: 6px; font-size: 13px; }
+.lease-usage { margin-top: 14px; font-size: 10px; line-height: 1.8; color: #777; }
+.lease-comparison { margin-top: 16px; font-size: 11px; }
+.lease-comparison summary { cursor: pointer; padding: 8px 0; }
+.lease-comparison-scroll { overflow-x: auto; margin-top: 10px; }
+.lease-comparison table { width: 100%; min-width: 610px; border-collapse: collapse; font-size: 10px; }
+.lease-comparison th, .lease-comparison td { padding: 12px 10px; border-bottom: 1px solid #eee; text-align: center; font-weight: 400; }
+.lease-comparison th:first-child { text-align: left; }
+.lease-comparison thead th { color: #777; }
+.cart-dialog:has(.lease-comparison[open]) { width: min(860px, calc(100% - 32px)); }
+
+.receipt-download-formats { display: grid; gap: 8px; }

@@ -42,6 +42,8 @@ export function groupDownloads(purchases: Purchase[]): LibraryEntry[] {
     }
   }
   for (const entry of entries.values()) {
+    const wav = entry.downloads.find(download => download.lease === "wav");
+    if (entry.id.startsWith("track:") && wav && !entry.downloads.some(download => download.lease === "mp3")) entry.downloads.push({ purchaseId: wav.purchaseId, lease: "mp3" });
     const rank = (lease: string | null) => lease === "mp3" ? 0 : lease === "wav" ? 1 : 2;
     entry.downloads.sort((a, b) => rank(a.lease) - rank(b.lease));
   }

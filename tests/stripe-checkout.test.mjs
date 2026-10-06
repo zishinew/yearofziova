@@ -82,5 +82,14 @@ test("paid orders grant only the purchased lease, replay safely and cannot be re
  assert.equal((await db.query("select user_id from purchases where checkout_order_id=$1",[guest])).rows[0].user_id,other);
  await asUser(other);
  assert.deepEqual((await db.query("select name from storage.objects")).rows,[{name:`${beat}/full.mp3`}]);
+ await db.exec("reset role");
+ await db.exec(await readFile(new URL("../supabase/migrations/20261006235526_usd_checkout_currency.sql",import.meta.url),"utf8"));
+ assert.equal((await db.query("select currency from checkout_orders where id=$1",[order])).rows[0].currency,"cad");
+ const usd="eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+ await db.query("insert into checkout_orders(id,user_id,items,amount,stripe_session_id) values($1,$2,$3,2499,'cs_test_usd')",[usd,buyer,items]);
+ assert.equal((await db.query("select currency from checkout_orders where id=$1",[usd])).rows[0].currency,"usd");
+ await assert.rejects(db.query("select complete_checkout_order($1,'cs_test_usd','pi_usd',2499,'cad')",[usd]),/does not match/);
+ await db.query("select complete_checkout_order($1,'cs_test_usd','pi_usd',2499,'usd')",[usd]);
+ assert.equal((await db.query("select status from checkout_orders where id=$1",[usd])).rows[0].status,"paid");
  } finally {await db.close();}
 });
