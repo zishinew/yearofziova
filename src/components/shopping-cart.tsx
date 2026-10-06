@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, useSyn
 import { type Beat } from "@/data/beats";
 import { LEASE_PRICES, type CheckoutItem } from "@/lib/payments";
 import { useOwnedLeases } from "@/components/use-owned-leases";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { useAdminMode } from "@/components/admin-mode";
 import { SuccessNotification } from "@/components/success-notification";
 
@@ -33,7 +34,12 @@ export function clearPurchasedCartItems(purchased: CheckoutItem[]) {
 
 export function ShoppingCart({ children }: { children: ReactNode }) {
   const isAdmin = useAdminMode();
-  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => {
+    const client = createBrowserSupabaseClient();
+    void client?.auth.getUser().then(({ data: { user } }) => { setSignedIn(!!user); if (user?.email) setEmail(user.email); });
+  }, []);
   const ownership = useOwnedLeases();
   const owns = (id: string, format?: Lease) => ownership.items.some(item => item.id === id && (!format || item.lease === format));
   useEffect(() => { if (ownership.ready && ownership.items.length) clearPurchasedCartItems(ownership.items); }, [ownership]);
@@ -86,9 +92,9 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
     if (checkingOut) return;
     setCheckingOut(true); setError("");
     try {
-      const response = await fetch("/api/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({items:checkoutItems.map(({id,lease})=>({id,lease}))}) });
+      const response = await fetch("/api/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,items:checkoutItems.map(({id,lease})=>({id,lease}))}) });
       const result = await response.json();
-      if (response.status === 401) { setOpened(false); router.push("/login", {scroll:false}); return; }
+      
       if (!response.ok || !result.url) throw new Error(result.error || "Couldn't start checkout.");
       window.location.assign(result.url);
     } catch (problem) { setError(problem instanceof Error ? problem.message : "Couldn't start checkout."); }
@@ -121,8 +127,9 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
         <a className="lease-exclusive" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer"><span>Exclusive lease</span><span>DM @yearofziova ↗</span></a>
       </> : items.length ? <><ul className="cart-items">{items.map(item => <li key={item.id}><div><p>{item.title}</p><span>{leaseName(item.lease)} · {money(prices[item.lease])}</span><button type="button" className="cart-change-lease" aria-label={`${owns(item.id) ? "Upgrade" : "Change"} lease for ${item.title}`} onClick={() => choose(item)}>{owns(item.id) ? "Upgrade lease" : "Change lease"}</button></div><button type="button" aria-label={`Remove ${item.title} from cart`} onClick={() => write(items.filter(other => other.id !== item.id))}>Remove</button></li>)}</ul>
         <div className="cart-total"><span>Total</span><span>{money(items.reduce((total, item) => total + prices[item.lease], 0))}</span></div>
+        <label className="checkout-email">Email<input type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" required /></label>
         <button className="lease-confirm" type="button" disabled={checkingOut} onClick={() => { void checkout(); }}>{checkingOut ? "Opening checkout…" : "Checkout ↗"}</button>
-        <p className="cart-note">Purchases are saved to your account.</p>
+        <p className="cart-note">{signedIn ? "Purchases are saved to your account." : <>No account needed. <Link href="/login?signup=1" scroll={false} onClick={() => setOpened(false)}>Create an account</Link> for easier access to your beats on any device.</>}</p>
       </> : <p className="cart-note">Your cart is empty.</p>}
       {error && <p className="auth-error" role="alert">{error}</p>}
     </dialog>}

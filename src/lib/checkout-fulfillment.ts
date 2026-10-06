@@ -11,8 +11,8 @@ export async function fulfillSession(sessionId: string, refunded = false) {
   if (session.mode !== "payment" || !session.metadata?.order_id || !session.client_reference_id) throw new Error("Invalid checkout session");
   const intent = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
   if (!intent) throw new Error("Missing payment intent");
-  const { data: order, error } = await db.from("checkout_orders").select("user_id,items").eq("id",session.metadata.order_id).single();
-  if (error || order?.user_id !== session.client_reference_id) throw new Error("Order owner mismatch");
+  const { data: order, error } = await db.from("checkout_orders").select("id,user_id,guest_email,items").eq("id",session.metadata.order_id).single();
+  if (error || !order || (order.guest_email ? order.id : order.user_id) !== session.client_reference_id) throw new Error("Order owner mismatch");
   const { data:lineItems } = await stripe.checkout.sessions.listLineItems(session.id,{limit:100,expand:["data.price.product"]});
   const expected = order.items as {product_id:string;unit_amount:number}[];
   if (!Array.isArray(expected) || lineItems.length !== expected.length || expected.some(item=>!lineItems.some(line=>{

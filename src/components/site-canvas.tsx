@@ -37,10 +37,17 @@ export function SiteCanvas({ skipLoader = false, initialView = "home", beatTrack
           className={view === "home" ? "vault-landing" : "vault-content"}
         >
           {view === "home" ? (
+            <>
             <div className="vault-choices">
               <button type="button" onClick={() => navigate("beats")}>Beat Vault</button>
               <button type="button" onClick={() => navigate("loops")}>Loop Kit</button>
             </div>
+            <nav className="landing-socials" aria-label="Socials">
+              <a href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer">Instagram ↗</a>
+              <a href="https://www.tiktok.com/@yearofziova" target="_blank" rel="noreferrer">TikTok ↗</a>
+              <span>Discord: yearofziova</span>
+            </nav>
+            </>
           ) : <SoundPlaylist key={view} kind={view} tracks={view === "beats" ? beatTracks : loopTracks} loadError={catalogError} />}
         </main>
       </PageTransition>

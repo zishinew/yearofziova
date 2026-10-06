@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+import { guestCookieName, guestTokenHash, newGuestToken } from "@/lib/guest-checkout";
 import { randomUUID } from "node:crypto";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { LEASE_PRICES, parseCheckoutItems } from "@/lib/payments";
@@ -10,12 +12,14 @@ export async function POST(request: Request) {
     if (request.headers.get("origin") !== siteOrigin()) return fail("Invalid checkout request.", 403);
     const supabase = await createServerSupabaseClient();
     const user = supabase ? (await supabase.auth.getUser()).data.user : null;
-    if (!user?.email_confirmed_at) return fail("Please sign in with a confirmed email before checkout.", 401);
-    const { data: admin, error: adminError } = await supabase!.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
+    if (user && !user.email_confirmed_at) return fail("Please sign in with a confirmed email before checkout.", 401);
+    const { data: admin, error: adminError } = user ? await supabase!.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle() : { data: null, error: null };
     if (adminError) throw new Error("Admin membership lookup failed");
     if (admin) return fail("Admin accounts cannot purchase beats. Edit tracks from your catalog instead.", 403);
     if (Number(request.headers.get("content-length")) > 16384) return fail("Cart is too large.");
     const body = await request.json();
+    const email = user?.email?.trim().toLowerCase() || (typeof body.email === "string" ? body.email.trim().toLowerCase() : "");
+    if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("Please enter a valid email address.");
     const items = parseCheckoutItems(body.items);
     if (!items) return fail("Check the beats in your cart.");
     if (!process.env.STRIPE_WEBHOOK_SECRET) return fail("Online checkout is being set up. Please try again soon.", 503);
@@ -32,16 +36,17 @@ export async function POST(request: Request) {
       if (error || !file) return fail("A selected download is temporarily unavailable.",409);
       orderItems.push({ ...item, product_id: product.id, title: track.title, unit_amount: LEASE_PRICES[item.lease] });
     }
-    const { data: owned, error: ownershipError } = await db.from("purchases").select("product_id")
-      .eq("user_id",user.id).eq("status","paid").in("product_id",orderItems.map(item=>item.product_id));
+    const { data: owned, error: ownershipError } = user ? await db.from("purchases").select("product_id")
+      .eq("user_id",user.id).eq("status","paid").in("product_id",orderItems.map(item=>item.product_id)) : { data: null, error: null };
     if (ownershipError) throw new Error("Ownership lookup failed");
     if (owned?.length) return fail("You already own a selected lease. Choose an unowned format to upgrade.",409);
     const id = randomUUID();
+    const token = user ? null : newGuestToken();
     const amount = orderItems.reduce((sum,item)=>sum+item.unit_amount,0);
-    const { error: insertError } = await db.from("checkout_orders").insert({ id,user_id:user.id,items:orderItems,amount });
+    const { error: insertError } = await db.from("checkout_orders").insert({ id,user_id:user?.id || null,guest_email: token ? email : null,guest_token_hash: token ? guestTokenHash(token) : null,items:orderItems,amount });
     if (insertError) throw insertError;
     const session = await stripe.checkout.sessions.create({
-      mode:"payment", managed_payments:{ enabled:false }, adaptive_pricing:{ enabled:false }, client_reference_id:user.id, customer_email:user.email,
+      mode:"payment", managed_payments:{ enabled:false }, adaptive_pricing:{ enabled:false }, client_reference_id:user?.id || id, customer_email:email,
       metadata:{ order_id:id }, payment_intent_data:{ metadata:{ order_id:id } },
       success_url:`${siteOrigin()}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url:`${siteOrigin()}/`,
@@ -53,6 +58,7 @@ export async function POST(request: Request) {
       await stripe.checkout.sessions.expire(session.id);
       throw new Error("Couldn't save checkout");
     }
+    if (token) (await cookies()).set(guestCookieName(id), token, { httpOnly: true, secure: siteOrigin().startsWith("https:"), sameSite: "lax", path: "/", maxAge: 90 * 24 * 60 * 60 });
     return Response.json({ url:session.url });
   } catch (error) {
     // Keep provider payloads and credentials out of logs and client responses.

@@ -26,16 +26,21 @@ test("only published, undeleted loops get short-lived download links; paid beat 
  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.test"; process.env.SUPABASE_SECRET_KEY = "fixture";
  t.after(() => { for (const [key,value] of [["NEXT_PUBLIC_SUPABASE_URL",previous.url],["SUPABASE_SECRET_KEY",previous.key]]) { if(value === undefined) delete process.env[key]; else process.env[key]=value; } delete globalThis.loopFixture; });
  const f = fixture({ id, title:"loop", preview_path:`${id}/listen.wav` }, {storage_path:`${id}/kit.zip`,download_name:"kit.zip"});
- assert.ok((await downloadLoop(id,true)).url);
+ assert.ok((await downloadLoop(id,true,"listener@example.com")).url);
  assert.deepEqual(f.filters.slice(0,4), [["catalog_tracks","id",id],["catalog_tracks","kind","loops"],["catalog_tracks","published",true],["catalog_tracks","deleted_at",null]]);
  assert.deepEqual(f.signed,[{bucket:"purchased-beats",path:`${id}/kit.zip`,seconds:60,options:{download:"kit.zip"}}]);
  const blocked = fixture(null,null);
- assert.match((await downloadLoop(id,true)).error,/unavailable/);
+ assert.match((await downloadLoop(id,true,"listener@example.com")).error,/unavailable/);
  assert.equal(blocked.signed.length,0);
  const audio = fixture({id,title:"loop",preview_path:`${id}/loop.wav`},null);
- assert.ok((await downloadLoop(id,true)).url);
+ assert.ok((await downloadLoop(id,true,"listener@example.com")).url);
  assert.equal(audio.signed[0].bucket,"track-previews");
  const wrongPath = fixture({id,title:"loop",preview_path:`${id}/loop.wav`},{storage_path:"another-track/file.wav",download_name:"file.wav"});
- assert.match((await downloadLoop(id,true)).error,/unavailable/);
+ assert.match((await downloadLoop(id,true,"listener@example.com")).error,/unavailable/);
  assert.equal(wrongPath.signed.length,0);
+});
+
+test("loop downloads require a valid email without requiring an account", async () => {
+ delete globalThis.loopFixture;
+ for (const email of [undefined, "", "invalid", "a @example.com"]) assert.match((await downloadLoop(id,true,email)).error, /valid email/);
 });

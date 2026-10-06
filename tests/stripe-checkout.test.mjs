@@ -64,5 +64,23 @@ test("paid orders grant only the purchased lease, replay safely and cannot be re
  await db.query("select complete_checkout_order($1,'cs_test_2','pi_2',2499,'cad')",[next]);
  await asUser(buyer);
  assert.deepEqual((await db.query("select name from storage.objects")).rows,[{name:`${beat}/full.mp3`}]);
+ await db.exec("reset role; alter table auth.users add column email text; alter table auth.users add column email_confirmed_at timestamptz");
+ await db.exec(await readFile(new URL("../supabase/migrations/20261006040008_guest_checkout_access.sql",import.meta.url),"utf8"));
+ const guest="dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+ await db.query("update auth.users set email='guest@example.com' where id=$1",[other]);
+ await db.query("insert into checkout_orders(id,guest_email,guest_token_hash,items,amount,stripe_session_id) values($1,'guest@example.com',$2,$3,2499,'cs_test_guest')",[guest,"a".repeat(64),items]);
+ await db.query("select complete_checkout_order($1,'cs_test_guest','pi_guest',2499,'cad')",[guest]);
+ assert.equal((await db.query("select user_id from purchases where checkout_order_id=$1",[guest])).rows[0].user_id,null);
+ await db.query("select claim_guest_orders($1)",[other]);
+ assert.equal((await db.query("select user_id from checkout_orders where id=$1",[guest])).rows[0].user_id,null);
+ await asUser(other);
+ assert.equal((await db.query("select * from purchases")).rows.length,0);
+ await assert.rejects(db.query("select claim_guest_orders($1)",[other]),/permission denied/);
+ await db.exec("reset role");
+ await db.query("update auth.users set email_confirmed_at=now() where id=$1",[other]);
+ await db.query("select claim_guest_orders($1)",[other]);
+ assert.equal((await db.query("select user_id from purchases where checkout_order_id=$1",[guest])).rows[0].user_id,other);
+ await asUser(other);
+ assert.deepEqual((await db.query("select name from storage.objects")).rows,[{name:`${beat}/full.mp3`}]);
  } finally {await db.close();}
 });

@@ -1,3 +1,5 @@
+import { paymentServices } from "@/lib/stripe";
+import { ownsOrder } from "@/lib/guest-checkout";
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
@@ -14,13 +16,16 @@ export default async function CheckoutSuccess({ searchParams }: { searchParams:P
   if (await getAdminSession()) redirect("/admin");
   const supabase = await createServerSupabaseClient();
   const user = supabase ? (await supabase.auth.getUser()).data.user : null;
-  if (!user || !supabase) redirect("/login");
+  const { db } = paymentServices();
   const { session_id } = await searchParams;
-  const findOrder = () => supabase.from("checkout_orders").select("id,status,items,amount").eq("stripe_session_id",session_id || "").eq("user_id",user.id).maybeSingle();
+  const findOrder = async () => {
+    const result = await db.from("checkout_orders").select("id,user_id,guest_token_hash,status,items,amount").eq("stripe_session_id",session_id || "").maybeSingle();
+    return { data: result.data && await ownsOrder(result.data, user?.email_confirmed_at ? user.id : undefined) ? result.data : null };
+  };
   let { data:order } = session_id && /^cs_[a-zA-Z0-9_]+$/.test(session_id)
     ? await findOrder()
     : { data:null };
-  // The URL only identifies an order owned by this signed-in customer.
+  // A session ID alone grants no access: require account ownership or the private guest cookie.
   // Fulfillment independently verifies payment, amount, currency and items with Stripe.
   if (session_id && order?.status === "pending") {
     try {
@@ -33,24 +38,24 @@ export default async function CheckoutSuccess({ searchParams }: { searchParams:P
   const paid = order?.status === "paid";
   const pending = order?.status === "pending";
   const { data: purchases, error: downloadError } = paid && order
-    ? await supabase.from("purchases").select("id,product_id,download_products!inner(title,bpm,lease,catalog_tracks(cover_path))")
-      .eq("checkout_order_id",order.id).eq("user_id",user.id).eq("status","paid")
+    ? await db.from("purchases").select("id,product_id,download_products!inner(title,bpm,lease,catalog_tracks(cover_path))")
+      .eq("checkout_order_id",order.id).eq("status","paid")
     : { data:null, error:null };
   return <AccountShell>
     <CheckoutStatus paid={paid} pending={pending} items={parseCheckoutItems(order?.items) || []} />
     {pending ? <PaymentConfirming /> : <section className="downloads-library purchase-receipt" aria-live="polite">
       <div className="downloads-heading"><div>
         <h1>{paid ? "Your purchase" : "Payment status"}</h1>
-        <p>{paid ? "Payment confirmed. Your files are ready." : order?.status === "refunded" ? "This order has been refunded." : "We couldn't find a completed purchase for this account."}</p>
+        <p>{paid ? "Payment confirmed. Your files are ready." : order?.status === "refunded" ? "This order has been refunded." : "We couldn't find a completed purchase in this browser."}</p>
       </div></div>
       {paid && <>
-        {downloadError || !purchases?.length ? <p className="auth-error" role="alert">Couldn’t load your files. They are also available in My Downloads.</p> : <ul className="purchase-grid">
+        {downloadError || !purchases?.length ? <p className="auth-error" role="alert">Couldn’t load your files. Please try again shortly.</p> : <ul className="purchase-grid">
           {purchases.map(purchase => {
             const product = Array.isArray(purchase.download_products) ? purchase.download_products[0] : purchase.download_products;
             if (!product) return null;
             const snapshot = Array.isArray(order?.items) ? order.items.find((item: {product_id:string}) => item.product_id === purchase.product_id) : null;
             const track = Array.isArray(product.catalog_tracks) ? product.catalog_tracks[0] : product.catalog_tracks;
-            const cover = track?.cover_path ? supabase.storage.from("track-covers").getPublicUrl(track.cover_path).data.publicUrl : null;
+            const cover = track?.cover_path ? db.storage.from("track-covers").getPublicUrl(track.cover_path).data.publicUrl : null;
             return <li key={purchase.id} className="purchase-card">
               <div className="purchase-cover">
                 {cover ? <Image src={cover} alt="" fill sizes="(max-width: 600px) 90vw, (max-width: 900px) 45vw, 320px" /> : <Image src="/eye transparent.png" alt="" width={120} height={120} className="purchase-cover-placeholder" />}
@@ -63,9 +68,9 @@ export default async function CheckoutSuccess({ searchParams }: { searchParams:P
           })}
         </ul>}
         <p className="purchase-total">Total paid <span>${((order?.amount || 0) / 100).toFixed(2)} CAD</span></p>
-        <p className="purchase-note">You can redownload these files anytime from your account.</p>
+        <p className="purchase-note">{user ? "You can redownload these files anytime from your account." : "Keep this page to redownload in this browser. Create an account and verify the same checkout email for access on any device."}</p>
       </>}
-      <Link href="/account" prefetch={false} className="auth-text-link">My Downloads ↗</Link>
+      <Link href={user ? "/account" : "/login?signup=1"} prefetch={false} className="auth-text-link">{user ? "My Downloads ↗" : "Create an account for easier access ↗"}</Link>
     </section>}
   </AccountShell>;
 }

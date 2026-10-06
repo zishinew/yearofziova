@@ -1,3 +1,4 @@
+import { paymentServices } from "@/lib/stripe";
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
@@ -17,6 +18,10 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   if (!user) redirect("/login");
   const { data: admin } = await supabase.from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
   if (admin && user.email_confirmed_at) redirect("/admin");
+  if (user.email_confirmed_at) {
+    const { error: claimError } = await paymentServices().db.rpc("claim_guest_orders", { p_user_id: user.id });
+    if (claimError) console.error("Guest purchase linking unavailable");
+  }
   const { data: purchases, error } = await supabase.from("purchases")
     .select("id, purchased_at, download_products!inner(id, title, bpm, lease, catalog_track_id, catalog_tracks(cover_path))")
     .eq("user_id", user.id).eq("status", "paid").order("purchased_at", { ascending: false });

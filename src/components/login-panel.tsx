@@ -5,7 +5,7 @@ import { SiteCanvas } from "@/components/site-canvas";
 import { accountsConfigured, createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function LoginPanel({ searchParams, intercepted = false }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; signup?: string }>;
   intercepted?: boolean;
 }) {
   const supabase = await createServerSupabaseClient();
@@ -17,7 +17,7 @@ export async function LoginPanel({ searchParams, intercepted = false }: {
   return <>
     {!intercepted && <SiteCanvas skipLoader />}
     <AuthDialog intercepted={intercepted}>
-      <AuthForm configured={accountsConfigured()} confirmationError={params.error === "confirmation"} />
+      <AuthForm mode={params.signup === "1" ? "signup" : "login"} configured={accountsConfigured()} confirmationError={params.error === "confirmation"} />
     </AuthDialog>
   </>;
 }

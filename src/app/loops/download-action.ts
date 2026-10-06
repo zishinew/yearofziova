@@ -2,9 +2,10 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-export async function downloadLoop(trackId: string, accepted: boolean): Promise<{ url?: string; error?: string }> {
+export async function downloadLoop(trackId: string, accepted: boolean, email: string): Promise<{ url?: string; error?: string }> {
   if (accepted !== true) return { error: "Please agree to the terms of use before downloading." };
   if (typeof trackId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trackId)) return { error: "This loop is unavailable." };
+  if (typeof email !== "string" || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return { error: "Please enter a valid email address." };
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) return { error: "Downloads are unavailable right now." };

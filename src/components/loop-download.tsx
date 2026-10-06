@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { downloadLoop } from "@/app/loops/download-action";
 
 export function LoopDownload({ id, title }: { id: string; title: string }) {
+  const [email, setEmail] = useState("");
   const [open, setOpen] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
@@ -31,8 +33,10 @@ export function LoopDownload({ id, title }: { id: string; title: string }) {
           <li><strong>Commercial use.</strong> Contact @yearofziova on Instagram before releasing any commercial use, including placements. Downloading these loops does not grant permission for commercial release.</li>
           <li><strong>No redistribution.</strong> You may not distribute these loops as your own work or claim authorship of them.</li>
         </ol>
-        <p>Send me what you make—I’m excited to hear it!<br />Instagram: <a href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer">@yearofziova ↗</a><br />Discord: yearofzi</p>
+        <p>Send me what you make—I’m excited to hear it!<br />Instagram: <a href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer">@yearofziova ↗</a><br />Discord: yearofziova</p>
       </div>
+      <label className="checkout-email">Email<input type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" required /></label>
+      <p className="cart-note">No account needed. <Link href="/login?signup=1" scroll={false} onClick={() => setOpen(false)}>Create an account</Link> for easier access to purchased beats.</p>
       <label className="loop-terms-agreement"><input type="checkbox" checked={accepted} onChange={event => setAccepted(event.target.checked)} /> <span>I have read and agree to these terms of use.</span></label>
       {error && <p className="auth-error" role="alert">{error}</p>}
       <button type="button" className="lease-confirm" disabled={!accepted || pending} onClick={() => {
@@ -40,7 +44,7 @@ export function LoopDownload({ id, title }: { id: string; title: string }) {
         setError("");
         startTransition(async () => {
           try {
-            const result = await downloadLoop(id, accepted);
+            const result = await downloadLoop(id, accepted, email);
             if (result.url) { window.location.assign(result.url); setOpen(false); }
             else setError(result.error || "Couldn't prepare your download.");
           } catch { setError("Couldn't prepare your download. Please try again."); }

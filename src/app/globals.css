@@ -410,3 +410,11 @@ body:has(.auth-dialog[open]) .playbar { filter: blur(8px); }
 .catalog-edit-dialog { width: min(640px, calc(100% - 32px)); }
 .catalog-edit-dialog .admin-editor { min-width: 0; }
 .admin-account-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 20px; }
+
+.checkout-email { display: grid; gap: 10px; margin: 20px 0; font-size: 12px; }
+.checkout-email input { width: 100%; padding: 14px; border: 1px solid #dedede; background: #fff; border-radius: 3px; font: inherit; }
+.checkout-email input:focus { outline: none; border-color: var(--accent, #ff0080); }
+.cart-note a { text-decoration: underline; text-underline-offset: 3px; }
+.vault-landing { position: relative; }
+.landing-socials { position: absolute; bottom: 32px; left: 0; width: 100%; display: flex; justify-content: center; flex-wrap: wrap; gap: 24px; padding: 0 24px; color: #777; font-size: 11px; }
+.landing-socials a:hover { color: var(--accent, #ff0080); }
