@@ -3,19 +3,19 @@
 import { useEffect, useState } from "react";
 
 export function SocialLinks() {
-  const [message, setMessage] = useState("");
+  const [feedback, setFeedback] = useState<{ message: string; id: number } | null>(null);
   useEffect(() => {
-    if (!message) return;
-    const timer = window.setTimeout(() => setMessage(""), 2500);
+    if (!feedback) return;
+    const timer = window.setTimeout(() => setFeedback(null), 2700);
     return () => window.clearTimeout(timer);
-  }, [message]);
+  }, [feedback]);
 
   async function copyDiscord() {
     try {
       await navigator.clipboard.writeText("yearofziova");
-      setMessage("Username copied ✓");
+      setFeedback(previous => ({ message: "Username copied ✓", id: (previous?.id ?? 0) + 1 }));
     } catch {
-      setMessage("Couldn't copy · yearofziova");
+      setFeedback(previous => ({ message: "Couldn't copy · yearofziova", id: (previous?.id ?? 0) + 1 }));
     }
   }
 
@@ -38,7 +38,9 @@ export function SocialLinks() {
           <path d="M19.7 5.2a18 18 0 0 0-4.4-1.4l-.5 1a16.3 16.3 0 0 0-5.6 0l-.5-1a18 18 0 0 0-4.4 1.4C1.5 9.3.8 13.3 1.2 17.3a18 18 0 0 0 5.4 2.7l1.1-1.8-1.7-.8.4-.3a13.8 13.8 0 0 0 11.2 0l.4.3-1.7.8 1.1 1.8a18 18 0 0 0 5.4-2.7c.5-4.6-.8-8.6-3.1-12.1ZM8.5 14.8c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z" />
         </svg>
       </button>
-      <span className="social-copy-indicator" role="status">{message}</span>
+      <span className="social-copy-status" role="status" aria-atomic="true">
+        {feedback && <span key={feedback.id} className="social-copy-bubble" onAnimationEnd={() => setFeedback(current => current?.id === feedback.id ? null : current)}>{feedback.message}</span>}
+      </span>
     </div>
   </nav>;
 }
