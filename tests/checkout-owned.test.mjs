@@ -36,7 +36,7 @@ test("checkout rejects an already-owned format but allows a different lease", as
   };
   globalThis.ownedCheckoutFixture = {
     auth:{auth:{getUser:async()=>({data:{user:{id:"buyer",email:"buyer@example.com",email_confirmed_at:"confirmed"}}})}, from: () => ({select() {return this;},eq() {return this;},maybeSingle:async()=>({data:null,error:null})})},
-    services:{db,stripe:{checkout:{sessions:{create:async()=>{sessions++;return {id:"cs_test",url:"https://checkout.stripe.com/test"};}}}}},
+    services:{db,stripe:{checkout:{sessions:{create:async params=>{assert.deepEqual(params.managed_payments,{enabled:false});assert.deepEqual(params.adaptive_pricing,{enabled:false});sessions++;return {id:"cs_test",url:"https://checkout.stripe.com/test"};}}}}},
   };
   try {
     const request = lease => new Request("http://localhost:3000/api/checkout",{method:"POST",headers:{origin:"http://localhost:3000","content-type":"application/json"},body:JSON.stringify({items:[{id,lease}]})});
