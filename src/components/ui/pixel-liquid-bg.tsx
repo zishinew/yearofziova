@@ -58,7 +58,6 @@ precision highp float;
 uniform sampler2D velocity;
 uniform float dt;
 uniform bool isBFECC;
-uniform float dissipation;
 uniform vec2 fboSize;
 uniform vec2 px;
 varying vec2 uv;
@@ -68,7 +67,7 @@ void main(){
     vec2 vel = texture2D(velocity, uv).xy;
     vec2 uv2 = uv - vel * dt * ratio;
     vec2 newVel = texture2D(velocity, uv2).xy;
-    gl_FragColor = vec4(newVel * dissipation, 0.0, 0.0);
+    gl_FragColor = vec4(newVel, 0.0, 0.0);
   } else {
     vec2 spot_new = uv;
     vec2 vel_old = texture2D(velocity, uv).xy;
@@ -80,7 +79,7 @@ void main(){
     vec2 vel_2 = texture2D(velocity, spot_new3).xy;
     vec2 spot_old2 = spot_new3 - vel_2 * dt * ratio;
     vec2 newVel2 = texture2D(velocity, spot_old2).xy;
-    gl_FragColor = vec4(newVel2 * dissipation, 0.0, 0.0);
+    gl_FragColor = vec4(newVel2, 0.0, 0.0);
   }
 }
 `;
@@ -117,7 +116,7 @@ void main(){
   vec2 pixUV   = (floor(uv * pixGrid) + 0.5) / pixGrid;
 
   vec2 vel  = texture2D(velocity, pixUV).xy;
-  float len = smoothstep(0.08, 0.65, length(vel) * 2.2);
+  float len = clamp(length(vel) * 2.2, 0.0, 1.0);
 
   vec2 bayerUV = (mod(floor(gl_FragCoord.xy), 4.0) + 0.5) / 4.0;
   float dither  = texture2D(uBayer, bayerUV).r - 0.5;
@@ -126,14 +125,13 @@ void main(){
 
   float t = clamp(len + dither * 0.12 + noiseVal, 0.0, 1.0);
 
-  float coverage = t;
   vec3 fluidColor = texture2D(palette, vec2(t, 0.5)).rgb;
-  vec3 col        = mix(bgColor.rgb, fluidColor, coverage);
+  vec3 col        = mix(bgColor.rgb, fluidColor, t);
 
   float grain = hash(gl_FragCoord.xy + vec2(uTime * 137.0, uTime * 91.0));
-  col += (grain - 0.5) * 0.085 * coverage;
+  col += (grain - 0.5) * 0.085;
 
-  float alpha = mix(bgColor.a, 1.0, coverage);
+  float alpha = mix(bgColor.a, 1.0, t);
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), alpha);
 }
 `;
@@ -620,7 +618,6 @@ class FluidSim {
       velocity: { value: fbos.vel_0!.texture },
       dt: { value: opts.dt },
       isBFECC: { value: true },
-      dissipation: { value: 1 },
     };
     const advPass = new ShaderPass(
       r,
@@ -751,8 +748,6 @@ class FluidSim {
       const u = this.advection.pass.uniforms;
       u.dt.value = opts.dt;
       u.isBFECC.value = opts.BFECC;
-      // Frame-rate-independent decay prevents old motion accumulating forever.
-      u.dissipation.value = Math.exp(-Math.min(this.gl.delta, 0.05) * 1.15);
       this.advection.line.visible = opts.isBounce;
       this.advection.pass.render();
     }
