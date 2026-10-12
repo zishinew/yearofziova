@@ -58,6 +58,7 @@ precision highp float;
 uniform sampler2D velocity;
 uniform float dt;
 uniform bool isBFECC;
+uniform float dissipation;
 uniform vec2 fboSize;
 uniform vec2 px;
 varying vec2 uv;
@@ -67,7 +68,7 @@ void main(){
     vec2 vel = texture2D(velocity, uv).xy;
     vec2 uv2 = uv - vel * dt * ratio;
     vec2 newVel = texture2D(velocity, uv2).xy;
-    gl_FragColor = vec4(newVel, 0.0, 0.0);
+    gl_FragColor = vec4(newVel * dissipation, 0.0, 0.0);
   } else {
     vec2 spot_new = uv;
     vec2 vel_old = texture2D(velocity, uv).xy;
@@ -79,7 +80,7 @@ void main(){
     vec2 vel_2 = texture2D(velocity, spot_new3).xy;
     vec2 spot_old2 = spot_new3 - vel_2 * dt * ratio;
     vec2 newVel2 = texture2D(velocity, spot_old2).xy;
-    gl_FragColor = vec4(newVel2, 0.0, 0.0);
+    gl_FragColor = vec4(newVel2 * dissipation, 0.0, 0.0);
   }
 }
 `;
@@ -93,6 +94,7 @@ uniform vec4 bgColor;
 uniform float uTime;
 uniform vec2 uRes;
 uniform float uPixelSize;
+uniform vec2 uAccentCenter;
 
 varying vec2 uv;
 
@@ -116,7 +118,7 @@ void main(){
   vec2 pixUV   = (floor(uv * pixGrid) + 0.5) / pixGrid;
 
   vec2 vel  = texture2D(velocity, pixUV).xy;
-  float len = clamp(length(vel) * 2.2, 0.0, 1.0);
+  float len = smoothstep(0.08, 0.65, length(vel) * 2.2);
 
   vec2 bayerUV = (mod(floor(gl_FragCoord.xy), 4.0) + 0.5) / 4.0;
   float dither  = texture2D(uBayer, bayerUV).r - 0.5;
@@ -125,13 +127,18 @@ void main(){
 
   float t = clamp(len + dither * 0.12 + noiseVal, 0.0, 1.0);
 
+  // A soft, aspect-correct accent footprint preserves white space even
+  // when vigorous interaction fills the velocity field. It can reach edges.
+  vec2 accentOffset = (pixUV - uAccentCenter) * uRes / min(uRes.x, uRes.y);
+  float accentMask = 1.0 - smoothstep(0.14, 0.44, length(accentOffset));
+  float coverage = t * accentMask;
   vec3 fluidColor = texture2D(palette, vec2(t, 0.5)).rgb;
-  vec3 col        = mix(bgColor.rgb, fluidColor, t);
+  vec3 col        = mix(bgColor.rgb, fluidColor, coverage);
 
   float grain = hash(gl_FragCoord.xy + vec2(uTime * 137.0, uTime * 91.0));
-  col += (grain - 0.5) * 0.085;
+  col += (grain - 0.5) * 0.085 * coverage;
 
-  float alpha = mix(bgColor.a, 1.0, t);
+  float alpha = mix(bgColor.a, 1.0, coverage);
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), alpha);
 }
 `;
@@ -618,6 +625,7 @@ class FluidSim {
       velocity: { value: fbos.vel_0!.texture },
       dt: { value: opts.dt },
       isBFECC: { value: true },
+      dissipation: { value: 1 },
     };
     const advPass = new ShaderPass(
       r,
@@ -748,6 +756,8 @@ class FluidSim {
       const u = this.advection.pass.uniforms;
       u.dt.value = opts.dt;
       u.isBFECC.value = opts.BFECC;
+      // Frame-rate-independent decay prevents old motion accumulating forever.
+      u.dissipation.value = Math.exp(-Math.min(this.gl.delta, 0.05) * 0.65);
       this.advection.line.visible = opts.isBounce;
       this.advection.pass.render();
     }
@@ -855,7 +865,7 @@ export function PixelLiquidBg({
   pixelSize = 18,
   resolution = 0.4,
   mouseForce = 8,
-  cursorSize = 110,
+  cursorSize = 85,
   autoDemo = true,
   children,
   className,
@@ -874,7 +884,7 @@ export function PixelLiquidBg({
 
     const mouse = new MouseGL();
     mouse.init(container);
-    mouse.autoIntensity = 2.4;
+    mouse.autoIntensity = 1.8;
 
     const dark = isDarkMode();
     const palette = makePaletteTexture(dark ? darkPalette : lightPalette);
@@ -899,6 +909,7 @@ export function PixelLiquidBg({
       uTime: { value: 0 },
       uRes: { value: new THREE.Vector2(gl.width, gl.height) },
       uPixelSize: { value: pixelSize },
+      uAccentCenter: { value: new THREE.Vector2(0.5, 0.5) },
       boundarySpace: { value: new THREE.Vector2() },
       px: { value: new THREE.Vector2() },
     };
@@ -963,6 +974,9 @@ export function PixelLiquidBg({
       mouse.update();
       gl.update();
       outputUniforms.uTime.value = gl.time;
+      const accentCenter = outputUniforms.uAccentCenter.value as THREE.Vector2;
+      accentCenter.x += (mouse.coords.x * 0.5 + 0.5 - accentCenter.x) * (1 - Math.exp(-gl.delta * 5));
+      accentCenter.y += (mouse.coords.y * 0.5 + 0.5 - accentCenter.y) * (1 - Math.exp(-gl.delta * 5));
       sim.update(gl.time);
       const r = gl.renderer;
       if (r) {
