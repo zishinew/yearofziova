@@ -94,7 +94,6 @@ uniform vec4 bgColor;
 uniform float uTime;
 uniform vec2 uRes;
 uniform float uPixelSize;
-uniform vec2 uAccentCenter;
 
 varying vec2 uv;
 
@@ -127,11 +126,7 @@ void main(){
 
   float t = clamp(len + dither * 0.12 + noiseVal, 0.0, 1.0);
 
-  // A soft, aspect-correct accent footprint preserves white space even
-  // when vigorous interaction fills the velocity field. It can reach edges.
-  vec2 accentOffset = (pixUV - uAccentCenter) * uRes / min(uRes.x, uRes.y);
-  float accentMask = 1.0 - smoothstep(0.14, 0.44, length(accentOffset));
-  float coverage = t * accentMask;
+  float coverage = t;
   vec3 fluidColor = texture2D(palette, vec2(t, 0.5)).rgb;
   vec3 col        = mix(bgColor.rgb, fluidColor, coverage);
 
@@ -757,7 +752,7 @@ class FluidSim {
       u.dt.value = opts.dt;
       u.isBFECC.value = opts.BFECC;
       // Frame-rate-independent decay prevents old motion accumulating forever.
-      u.dissipation.value = Math.exp(-Math.min(this.gl.delta, 0.05) * 0.65);
+      u.dissipation.value = Math.exp(-Math.min(this.gl.delta, 0.05) * 1.15);
       this.advection.line.visible = opts.isBounce;
       this.advection.pass.render();
     }
@@ -865,7 +860,7 @@ export function PixelLiquidBg({
   pixelSize = 18,
   resolution = 0.4,
   mouseForce = 8,
-  cursorSize = 85,
+  cursorSize = 110,
   autoDemo = true,
   children,
   className,
@@ -884,7 +879,7 @@ export function PixelLiquidBg({
 
     const mouse = new MouseGL();
     mouse.init(container);
-    mouse.autoIntensity = 1.8;
+    mouse.autoIntensity = 2.4;
 
     const dark = isDarkMode();
     const palette = makePaletteTexture(dark ? darkPalette : lightPalette);
@@ -909,7 +904,6 @@ export function PixelLiquidBg({
       uTime: { value: 0 },
       uRes: { value: new THREE.Vector2(gl.width, gl.height) },
       uPixelSize: { value: pixelSize },
-      uAccentCenter: { value: new THREE.Vector2(0.5, 0.5) },
       boundarySpace: { value: new THREE.Vector2() },
       px: { value: new THREE.Vector2() },
     };
@@ -974,9 +968,6 @@ export function PixelLiquidBg({
       mouse.update();
       gl.update();
       outputUniforms.uTime.value = gl.time;
-      const accentCenter = outputUniforms.uAccentCenter.value as THREE.Vector2;
-      accentCenter.x += (mouse.coords.x * 0.5 + 0.5 - accentCenter.x) * (1 - Math.exp(-gl.delta * 5));
-      accentCenter.y += (mouse.coords.y * 0.5 + 0.5 - accentCenter.y) * (1 - Math.exp(-gl.delta * 5));
       sim.update(gl.time);
       const r = gl.renderer;
       if (r) {
