@@ -454,3 +454,7 @@ body:has(.auth-dialog[open]) .playbar { filter: blur(8px); }
 .cart-dialog:has(.lease-comparison[open]) { width: min(860px, calc(100% - 32px)); }
 
 .receipt-download-formats { display: grid; gap: 8px; }
+
+.playlist-admin-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+.admin-download-files { display: grid; gap: 12px; margin-top: 24px; }
+.admin-download-files button { padding: 14px; text-align: left; }
