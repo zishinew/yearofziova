@@ -37,7 +37,7 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
   function choose(files: FileList | null) {
     if (!files || running.current) return;
     const planned = planBulkUpload(Array.from(files), kind);
-    setEntries(planned.map(entry => ({ ...entry, id: crypto.randomUUID(), bpm: entry.bpm === null ? "" : String(entry.bpm), tags: "", notes: entry.notes.join("\n"), status: "queued", message: "" })));
+    setEntries(planned.map(entry => ({ ...entry, id: crypto.randomUUID(), bpm: entry.bpm === null ? "" : String(entry.bpm), previewStart: 0, tags: "", notes: entry.notes.join("\n"), status: "queued", message: "" })));
     setSummary(planned.length ? `${planned.length} ${kind} found. ${kind === "beats" ? "Matching covers" : "Matching ZIP previews"} are included; other files are skipped.` : `No ${kind === "beats" ? "WAV files" : "audio or ZIP files"} found.`);
   }
   function update(id: string, patch: Partial<Entry>) {
@@ -89,6 +89,7 @@ export function BulkUpload({ kind, onBusy, onCompleted }: { kind: "beats" | "loo
           <AdminPreview id={`admin-upload-${entry.id}`} title={entry.title} bpm={Number(entry.bpm)} file={kind === "beats" ? entry.file : entry.preview} />
           <fieldset disabled={busy || entry.status === "done"} className="admin-fields">
             <div className="bulk-entry-fields"><label>Title<input value={entry.title} maxLength={120} onChange={event => update(entry.id, { title: event.target.value, status: "queued", message: "" })} onBlur={() => { const parsed = parseTrackText(entry.title); update(entry.id, { title: parsed.title, notes: [...new Set([...entry.notes.split("\n").filter(Boolean), ...parsed.notes])].join("\n") }); }} /></label><label>BPM<input type="number" min={1} max={400} step={1} value={entry.bpm} onChange={event => update(entry.id, { bpm: event.target.value, status: "queued", message: "" })} /></label></div>
+            {kind === "beats" && <label>Preview starts at (seconds)<span className="admin-hint">Optional · defaults to 0 · plays up to 30 seconds</span><input type="number" min={0} step={0.1} value={entry.previewStart ?? 0} onChange={event => update(entry.id, { previewStart: event.target.value === "" ? 0 : Number(event.target.value), status: "queued", message: "" })} /></label>}
             <label>Tags<span className="admin-hint">Separate with commas</span><input value={entry.tags} maxLength={2400} onChange={event => update(entry.id, { tags: event.target.value, status: "queued", message: "" })} /></label>
             <label>Additional notes<span className="admin-hint">One per line</span><textarea value={entry.notes} maxLength={15000} rows={2} onChange={event => update(entry.id, { notes: event.target.value, status: "queued", message: "" })} /></label>
             <div className="admin-field-pair">{kind === "beats" && <label>Cover art<span className="admin-hint">{entry.cover?.name || "Optional"}</span><input type="file" accept=".jpg,.jpeg,.png,.webp" onChange={event => update(entry.id, { cover: event.target.files?.[0] || null, status: "queued", message: "" })} /></label>}

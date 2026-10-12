@@ -1,16 +1,18 @@
+import { uploadStorageFile } from "@/lib/storage-upload";
 import { audioTypes, coverTypes, parseTrackText, type AdminTrack } from "@/lib/track-upload";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { saveTrack } from "@/app/admin/actions";
 
-export type BulkTrack = { id: string; file: File; preview: File | null; cover: File | null; title: string; bpm: string };
+export type BulkTrack = { id: string; file: File; preview: File | null; cover: File | null; title: string; bpm: string; previewStart?: number };
 export function bulkTrackError(track: BulkTrack, kind: "beats" | "loops") {
   if (!track.title.trim() || track.title.length > 120) return "Enter a title up to 120 characters.";
   const bpm = Number(track.bpm);
   if (!Number.isInteger(bpm) || bpm < 1 || bpm > 400) return "Enter a BPM from 1 to 400.";
   if (kind === "beats" && !/\.wav$/i.test(track.file.name)) return "Beats need a WAV file.";
   if (kind === "loops" && !track.preview) return "Choose preview audio for this ZIP.";
-  for (const file of [track.file, track.preview]) if (file && (!file.size || file.size > 50 * 1024 * 1024)) return "Audio and ZIP files must be 50 MB or smaller.";
-  if (track.cover && (!track.cover.size || track.cover.size > 5 * 1024 * 1024)) return "Cover art must be 5 MB or smaller.";
+  for (const file of [track.file, track.preview]) if (file && !file.size) return "Choose non-empty audio and ZIP files.";
+  if (track.cover && !track.cover.size) return "Choose a non-empty cover image.";
+  if (kind === "beats" && (!Number.isFinite(track.previewStart ?? 0) || (track.previewStart ?? 0) < 0)) return "Choose a valid preview start in seconds.";
   return null;
 }
 
@@ -30,8 +32,7 @@ export async function uploadBulkTrack(track: BulkTrack, kind: "beats" | "loops",
     if (!types[extension]) throw new Error(`Unsupported file: ${file.name}`);
     onProgress(`Uploading ${file.name}…`);
     const path = `${track.id}/${crypto.randomUUID()}.${extension}`;
-    const { error } = await client.storage.from(bucket).upload(path, file, { contentType: types[extension], upsert: false });
-    if (error) throw new Error(`Couldn't upload ${file.name}. ${error.message}`);
+    await uploadStorageFile(client, bucket, path, file, types[extension], onProgress);
     uploaded.push({ bucket, path });
     return path;
   }
@@ -41,8 +42,8 @@ export async function uploadBulkTrack(track: BulkTrack, kind: "beats" | "loops",
     let seconds: number;
     if (kind === "beats") {
       const { wavToMp3 } = await import("@/lib/wav-to-mp3");
-      const generated = await wavToMp3(track.file, onProgress);
-      preview = generated.mp3; mp3 = generated.mp3; seconds = generated.duration;
+      const generated = await wavToMp3(track.file, onProgress, track.previewStart ?? 0);
+      preview = generated.preview; mp3 = generated.mp3; seconds = generated.duration;
     } else {
       onProgress("Reading preview…");
       seconds = await duration(preview!);
@@ -57,7 +58,7 @@ export async function uploadBulkTrack(track: BulkTrack, kind: "beats" | "loops",
       leases.push({ lease: "mp3", path, name: name(mp3) }, { lease: "wav", path: downloadPath, name: name(track.file) });
     }
     const parsed = parseTrackText(track.title);
-    const payload: AdminTrack = { id: track.id, kind, title: parsed.title || "Untitled", bpm: Number(track.bpm), duration_seconds: seconds, genre: "", musical_key: "", description: "", moods: [], tags, notes: [...new Set([...notes, ...parsed.notes])], preview_path: previewPath, cover_path: coverPath, published };
+    const payload: AdminTrack = { id: track.id, kind, title: parsed.title || "Untitled", bpm: Number(track.bpm), duration_seconds: seconds, preview_start_seconds: kind === "beats" ? track.previewStart ?? 0 : 0, genre: "", musical_key: "", description: "", moods: [], tags, notes: [...new Set([...notes, ...parsed.notes])], preview_path: previewPath, cover_path: coverPath, published };
     onProgress("Saving track…");
     const result = await saveTrack(payload, kind === "loops" ? downloadPath : undefined, kind === "loops" ? name(track.file) : undefined, leases);
     if (result.error) throw new Error(result.error);

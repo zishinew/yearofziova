@@ -48,8 +48,8 @@ export function CoverCropper({ value, onChange, onLoading, existingCover }: {
     URL.revokeObjectURL(imageUrl.current);
     imageUrl.current = "";
     if (!file) { onLoading(false); return; }
-    if (file.size > 5 * 1024 * 1024 || !/\.(jpe?g|png|webp)$/i.test(file.name)) {
-      setError("Choose a JPG, PNG or WEBP image up to 5 MB.");
+    if (!/\.(jpe?g|png|webp)$/i.test(file.name)) {
+      setError("Choose a JPG, PNG or WEBP image.");
       onLoading(false);
       return;
     }
@@ -90,7 +90,7 @@ export function CoverCropper({ value, onChange, onLoading, existingCover }: {
   const side = value ? Math.min(value.width, value.height) / value.zoom : 1;
 
   return <div className="cover-editor">
-    <label>Cover art<span className="admin-hint">JPG, PNG or WEBP · up to 5 MB{existingCover ? " · leave empty to keep current" : ""}</span>
+    <label>Cover art<span className="admin-hint">JPG, PNG or WEBP{existingCover ? " · leave empty to keep current" : ""}</span>
       <input ref={input} name="cover" type="file" accept=".jpg,.jpeg,.png,.webp" onChange={event => void choose(event.target.files?.[0])} /></label>
     {value && url && <div className="cover-crop-controls">
       <div className="cover-crop-window" role="group" aria-label="Cover crop preview" aria-describedby="cover-crop-help" tabIndex={0}

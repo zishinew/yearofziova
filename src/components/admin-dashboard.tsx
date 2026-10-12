@@ -1,5 +1,6 @@
 "use client";
 
+import { storedBeatWav, uploadStorageFile } from "@/lib/storage-upload";
 import { useId, useRef, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { logout } from "@/app/auth/actions";
@@ -47,7 +48,6 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [coverCrop, setCoverCrop] = useState<CoverSelection | null>(null);
-  const [hasWav, setHasWav] = useState(false);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [wavFile, setWavFile] = useState<File | null>(null);
   const previewId = useId();
@@ -86,16 +86,14 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
       const supabase = createBrowserSupabaseClient();
       const uploaded: { bucket: string; path: string }[] = [];
       const id = track?.id || crypto.randomUUID();
-      async function upload(field: string, bucket: string, types: Record<string, string>, limit: number) {
+      async function upload(field: string, bucket: string, types: Record<string, string>) {
         const file = values.get(field);
         if (!(file instanceof File) || !file.size) return null;
         const ext = file.name.split(".").pop()?.toLowerCase() || "";
         if (!types[ext]) throw new Error(`Unsupported ${field} format.`);
-        if (file.size > limit * 1024 * 1024) throw new Error(`${field} must be ${limit} MB or smaller.`);
         setStatus(`Uploading ${field}…`);
         const path = `${id}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadError } = await supabase.storage.from(bucket).upload(path, file, { contentType: types[ext], upsert: false });
-        if (uploadError) throw new Error(`Couldn't upload ${field}: ${uploadError.message}`);
+        await uploadStorageFile(supabase, bucket, path, file, types[ext], setStatus);
         uploaded.push({ bucket, path });
         return { path, file };
       }
@@ -106,19 +104,25 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
           values.set("cover", await croppedCover(coverCrop));
         }
         let generatedDuration: number | null = null;
-        const sourceWav = values.get("wav");
+        const previewStart = Number(values.get("previewStart") || 0);
+        let sourceWav = values.get("wav");
+        const replacingSource = sourceWav instanceof File && sourceWav.size > 0;
+        if (kind === "beats" && track && !replacingSource && previewStart !== (track.preview_start_seconds ?? 0)) {
+          setStatus("Reading original WAV…");
+          sourceWav = await storedBeatWav(supabase, track.id);
+        }
         if (kind === "beats" && sourceWav instanceof File && sourceWav.size) {
           const { wavToMp3 } = await import("@/lib/wav-to-mp3");
-          const generated = await wavToMp3(sourceWav, setStatus);
-          values.set("mp3", generated.mp3);
-          values.set("preview", generated.mp3);
+          const generated = await wavToMp3(sourceWav, setStatus, previewStart);
+          if (replacingSource) values.set("mp3", generated.mp3);
+          values.set("preview", generated.preview);
           generatedDuration = generated.duration;
         }
-        const preview = await upload("preview", "track-previews", audioTypes, 50);
-        const cover = kind === "beats" ? await upload("cover", "track-covers", coverTypes, 5) : null;
-        const mp3 = kind === "beats" ? await upload("mp3", "purchased-beats", {mp3: "audio/mpeg"}, 50) : null;
-        const wav = kind === "beats" ? await upload("wav", "purchased-beats", {wav: "audio/wav"}, 50) : null;
-        const download = kind === "loops" ? await upload("download", "purchased-beats", { ...audioTypes, zip: "application/zip" }, 50) : null;
+        const preview = await upload("preview", "track-previews", audioTypes);
+        const cover = kind === "beats" ? await upload("cover", "track-covers", coverTypes) : null;
+        const mp3 = kind === "beats" ? await upload("mp3", "purchased-beats", {mp3: "audio/mpeg"}) : null;
+        const wav = kind === "beats" ? await upload("wav", "purchased-beats", {wav: "audio/wav"}) : null;
+        const download = kind === "loops" ? await upload("download", "purchased-beats", { ...audioTypes, zip: "application/zip" }) : null;
         const previewPath = preview?.path || track?.preview_path;
         if (!previewPath) throw new Error("Choose a playback audio file.");
         const duration = String(values.get("duration") || "").trim();
@@ -130,14 +134,13 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
           genre: track?.genre || "", musical_key: track?.musical_key || "",
           description: track?.description || "",
           moods: track?.moods || [], tags: list(values.get("tags"), ","), notes: [...new Set([...list(values.get("notes"), "\n"), ...parsed.notes])],
-          preview_path: previewPath, cover_path: kind === "beats" ? cover?.path || track?.cover_path || null : null,
+          preview_start_seconds: kind === "beats" ? previewStart : 0, preview_path: previewPath, cover_path: kind === "beats" ? cover?.path || track?.cover_path || null : null,
           published: track?.published ?? true,
         };
         const leases = ([{lease:"mp3" as const, upload:mp3}, {lease:"wav" as const, upload:wav}]).flatMap(({lease,upload})=>upload ? [{lease,path:upload.path,name:upload.file.name.replace(/[^\w. ()-]/g,"_").slice(0,200)}] : []);
         const result = await saveTrack(payload, download?.path, download?.file.name.replace(/[^\w. ()-]/g, "_").slice(0, 200), leases);
         if (result.error) throw new Error(result.error);
         form.current?.reset();
-        setHasWav(false);
         setPreviewFile(null); setWavFile(null);
         autoBpm.current = null;
         autoTitle.current = null;
@@ -168,13 +171,14 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
           </div>
           <label>Tags<span className="admin-hint">Separate with commas</span><input name="tags" maxLength={2400} defaultValue={track?.tags.join(", ")} /></label>
           <label>Additional notes<span className="admin-hint">One per line</span><textarea name="notes" maxLength={15000} rows={2} defaultValue={track?.notes.join("\n")} /></label>
-          <label>{kind === "beats" ? "Full beat audio" : "Playback audio"}<span className="admin-hint">Public · up to 50 MB{kind === "beats" ? " · optional with WAV: uses the full generated MP3" : track ? " · leave empty to keep current" : ""}</span>
-            <input name="preview" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac" required={!track && (kind !== "beats" || !hasWav)} onChange={event => { setPreviewFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0], true); }} /></label>
-          {kind === "beats" && <CoverCropper value={coverCrop} onChange={setCoverCrop} onLoading={setCoverLoading} existingCover={Boolean(track?.cover_path)} />}
           {kind === "beats" ? <>
-            <label>WAV lease download<span className="admin-hint">Private · up to 50 MB · creates a 320 kbps MP3 automatically · leave empty to keep current</span><input name="wav" type="file" accept=".wav" onChange={event=>{ setHasWav(Boolean(event.target.files?.[0])); setWavFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0]); }} /></label>
-          </> : <label>Free loop download<span className="admin-hint">Audio or ZIP · up to 50 MB · downloads require agreement to your terms · optional; keeps the current download or uses playback audio</span>
-            <input name="download" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac,.zip" onChange={event => readFilename(event.target.files?.[0])} /></label>}
+            <label>Beat audio (WAV)<span className="admin-hint">One file creates the full WAV + 320 kbps MP3 downloads and a 30-second preview{track ? " · leave empty to keep current audio" : ""}</span><input name="wav" type="file" accept=".wav" required={!track} onChange={event => { setWavFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0]); }} /></label>
+            <label>Preview starts at (seconds)<span className="admin-hint">Optional · defaults to 0 · plays up to 30 seconds from here</span><input name="previewStart" type="number" min={0} step={0.1} defaultValue={track?.preview_start_seconds ?? 0} /></label>
+            <CoverCropper value={coverCrop} onChange={setCoverCrop} onLoading={setCoverLoading} existingCover={Boolean(track?.cover_path)} />
+          </> : <>
+            <label>Playback audio<span className="admin-hint">Public{track ? " · leave empty to keep current" : ""}</span><input name="preview" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac" required={!track} onChange={event => { setPreviewFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0], true); }} /></label>
+            <label>Free loop download<span className="admin-hint">Audio or ZIP · downloads require agreement to your terms · optional; keeps the current download or uses playback audio</span><input name="download" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac,.zip" onChange={event => readFilename(event.target.files?.[0])} /></label>
+          </>}
           {!track && <p className="admin-hint">Uploading publishes this track in your catalog.</p>}
           {kind === "beats" && <p className="admin-hint">MP3 $24.99 USD · WAV $34.99 USD. Upload a WAV to enable both leases.</p>}
           <button className="auth-submit" type="submit" disabled={coverLoading}>{coverLoading ? "Opening cover…" : pending ? status || "Please wait…" : track ? "Save changes" : "Upload & publish"}</button>

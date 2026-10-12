@@ -11,6 +11,7 @@ const planSource = (await readFile(new URL("../src/lib/bulk-upload-plan.ts", imp
 const { planBulkUpload } = await import(url(compile(planSource)));
 const workerSource = (await readFile(new URL("../src/lib/bulk-track-upload.ts", import.meta.url), "utf8"))
   .replace('"@/lib/track-upload"', JSON.stringify(trackUpload))
+  .replace('import { uploadStorageFile } from "@/lib/storage-upload";', 'const uploadStorageFile = async (client,bucket,path,file,contentType) => { const {error} = await client.storage.from(bucket).upload(path,file,{contentType,upsert:false}); if(error) throw new Error(error.message); };')
   .replace('import { createBrowserSupabaseClient } from "@/lib/supabase/browser";', 'const createBrowserSupabaseClient = () => globalThis.bulkFixture.client;')
   .replace('import { saveTrack } from "@/app/admin/actions";', 'const saveTrack = (...args) => globalThis.bulkFixture.save(...args);')
   .replace('await import("@/lib/wav-to-mp3")', '({ wavToMp3: globalThis.bulkFixture.convert })');
@@ -50,34 +51,38 @@ test("loop ZIPs consume their matching preview; missing previews and ambiguous c
   assert.ok(entries.every(entry => entry.cover === null));
 });
 
-test("bulk preflight rejects missing BPM, oversized files and ZIPs without a preview", () => {
+test("bulk preflight rejects missing BPM, empty files and ZIPs without a preview", () => {
   const entry = { id: crypto.randomUUID(), file: file("beat.wav"), preview: null, cover: null, title: "beat", bpm: "140" };
   assert.equal(bulkTrackError(entry, "beats"), null);
   assert.match(bulkTrackError({ ...entry, bpm: "" }, "beats"), /BPM/);
-  assert.match(bulkTrackError({ ...entry, file: file("big.wav", "big.wav", 51 * 1024 * 1024) }, "beats"), /50 MB/);
+  assert.equal(bulkTrackError({ ...entry, file: file("big.wav", "big.wav", 500 * 1024 * 1024), cover: file("big.png", "big.png", 10 * 1024 * 1024) }, "beats"), null);
+  assert.match(bulkTrackError({ ...entry, file: file("empty.wav", "empty.wav", 0) }, "beats"), /non-empty/);
+  assert.match(bulkTrackError({ ...entry, previewStart: -1 }, "beats"), /preview start/);
   assert.match(bulkTrackError({ ...entry, file: file("kit.zip") }, "loops"), /preview/);
 });
 
 function fixture(t, failSave = false) {
-  const uploads = []; const removals = []; const saves = [];
+  const uploads = []; const removals = []; const saves = []; const starts = [];
   globalThis.bulkFixture = {
     client: { storage: { from: bucket => ({ upload: async (path, file, options) => { uploads.push({ bucket, path, file, options }); return { error: null }; }, remove: async paths => { removals.push({ bucket, paths }); return { error: null }; } }) } },
-    convert: async () => ({ mp3: file("beat.mp3"), preview: file("beat-preview.mp3"), duration: 137 }),
+    convert: async (_file, _progress, start) => { starts.push(start); return { mp3: file("beat.mp3"), preview: file("beat-preview.mp3"), duration: 137 }; },
     save: async (...args) => { saves.push(args); return failSave ? { error: "Save failed" } : {}; },
   };
   t.after(() => { delete globalThis.bulkFixture; });
-  return { uploads, removals, saves };
+  return { uploads, removals, saves, starts };
 }
 
-test("bulk WAV upload keeps lease files private, uses full MP3 for playback and saves both leases atomically", async t => {
+test("bulk WAV upload keeps lease files private, uses a generated preview for playback and saves both leases atomically", async t => {
   const f = fixture(t);
   const id = crypto.randomUUID();
-  await uploadBulkTrack({ id, file: file("beat.wav"), cover: file("cover.png"), preview: null, title: " beat ", bpm: "140" }, "beats", true, ["rage"], ["note"], () => {});
+  await uploadBulkTrack({ id, file: file("beat.wav"), cover: file("cover.png"), preview: null, title: " beat ", bpm: "140", previewStart: 45 }, "beats", true, ["rage"], ["note"], () => {});
+  assert.deepEqual(f.starts, [45]);
   assert.equal(f.uploads.length, 4);
   assert.ok(f.uploads.every(upload => upload.path.startsWith(`${id}/`) && upload.options.upsert === false));
-  assert.equal(f.uploads.find(upload => upload.bucket === "track-previews").file.name, "beat.mp3");
+  assert.equal(f.uploads.find(upload => upload.bucket === "track-previews").file.name, "beat-preview.mp3");
   assert.deepEqual(f.uploads.filter(upload => upload.bucket === "purchased-beats").map(upload => upload.file.name).sort(), ["beat.mp3", "beat.wav"]);
   const [track, download, , leases] = f.saves[0];
+  assert.equal(track.preview_start_seconds, 45);
   assert.equal(track.title, "beat"); assert.equal(track.duration_seconds, 137);
   assert.deepEqual(track.tags, ["rage"]); assert.deepEqual(track.notes, ["note"]);
   assert.equal(download, undefined);

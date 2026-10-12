@@ -25,7 +25,7 @@ test("paid orders grant only the purchased lease, replay safely and cannot be re
  create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text);
  alter table storage.objects enable row level security;
  grant select,insert,update,delete on storage.objects to anon,authenticated;`);
- for (const file of ["20261002224637_customer_downloads.sql","20261002234529_admin_catalog_uploads.sql","20261002235432_consolidate_catalog_policies.sql","20261003040033_stripe_checkout.sql"]) await db.exec(await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),"utf8"));
+ for (const file of ["20261002224637_customer_downloads.sql","20261002234529_admin_catalog_uploads.sql","20261002235432_consolidate_catalog_policies.sql","20261003040033_stripe_checkout.sql","20261012030732_unified_audio_previews.sql"]) await db.exec(await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),"utf8"));
  await db.query("insert into auth.users values($1),($2),($3)",[owner,buyer,other]);
  await db.query("insert into admin_users(user_id) values($1)",[owner]);
  await db.query("insert into catalog_tracks(id,kind,title,bpm,preview_path,published) values($1,'beats','Test beat',140,$2,true)",[beat,`${beat}/preview.mp3`]);
@@ -34,6 +34,12 @@ test("paid orders grant only the purchased lease, replay safely and cannot be re
  await asUser(owner);
  for (const lease of ["mp3","wav"]) await db.query("select save_track_lease($1,$2,$3,$4)",[beat,lease,`${beat}/full.${lease}`,`beat.${lease}`]);
  await assert.rejects(db.query("select save_track_lease($1,'wav',$2,'beat.wav')",[beat,`${beat}/full.mp3`]),/Invalid lease/);
+ await db.query("insert into storage.objects(bucket_id,name) values('track-previews',$1)",[`${beat}/preview.mp3`]);
+ const metadata = {id:beat,kind:"beats",title:"Test beat",bpm:140,duration_seconds:137,genre:"",musical_key:"",description:"",moods:[],tags:[],notes:[],preview_path:`${beat}/preview.mp3`,cover_path:null,published:true,preview_start_seconds:45.5};
+ await db.query("select save_catalog_track_with_leases($1::jsonb)",[JSON.stringify(metadata)]);
+ assert.equal(Number((await db.query("select preview_start_seconds from catalog_tracks where id=$1",[beat])).rows[0].preview_start_seconds),45.5);
+ await assert.rejects(db.query("select save_catalog_track_with_leases($1::jsonb)",[JSON.stringify({...metadata,title:"Should roll back",preview_start_seconds:-1})]),/check constraint/);
+ assert.equal((await db.query("select title from catalog_tracks where id=$1",[beat])).rows[0].title,"Test beat");
  await asUser(buyer);
  await assert.rejects(db.query("select save_track_lease($1,'mp3',$2,'beat.mp3')",[beat,`${beat}/full.mp3`]),/Admin access/);
  await assert.rejects(db.query("select complete_checkout_order($1,'cs_test_1','pi_1',2499,'cad')",[order]),/permission denied/);
