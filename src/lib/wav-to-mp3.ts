@@ -1,4 +1,4 @@
-export async function wavToMp3(file: File, onProgress: (message: string) => void) {
+async function processWav(file: File, onProgress: (message: string) => void, encode: boolean, analyze: boolean) {
   if (!/\.wav$/i.test(file.name) || !file.size) throw new Error("Choose a non-empty WAV file.");
   onProgress("Reading WAV…");
   const input = await file.arrayBuffer();
@@ -12,22 +12,28 @@ export async function wavToMp3(file: File, onProgress: (message: string) => void
   if (![1, 2].includes(audio.numberOfChannels)) throw new Error("Please use a mono or stereo WAV file.");
   const channels = Array.from({ length: audio.numberOfChannels }, (_, i) => audio.getChannelData(i).slice());
   const worker = new Worker(new URL("./mp3.worker.ts", import.meta.url));
-  const name = file.name.replace(/\.wav$/i, ".mp3");
-  const encoded = await new Promise<ArrayBuffer>((resolve, reject) => {
-    const timer = window.setTimeout(() => { worker.terminate(); reject(new Error("MP3 conversion timed out. Please try a shorter WAV.")); }, 10 * 60 * 1000);
+  const result = await new Promise<{ mp3?: ArrayBuffer; key: string }>((resolve, reject) => {
+    const timer = window.setTimeout(() => { worker.terminate(); reject(new Error("Audio processing timed out. Please try a shorter WAV.")); }, 10 * 60 * 1000);
     const finish = () => { window.clearTimeout(timer); worker.terminate(); };
-    worker.onerror = () => { finish(); reject(new Error("Couldn't create the MP3. Please try again.")); };
-    worker.onmessage = (event: MessageEvent<{ percent?: number; mp3?: ArrayBuffer; error?: string }>) => {
+    worker.onerror = () => { finish(); reject(new Error("Couldn't process the WAV. Please try again.")); };
+    worker.onmessage = (event: MessageEvent<{ analyzing?: boolean; percent?: number; mp3?: ArrayBuffer; key?: string; error?: string }>) => {
       if (event.data.error) { finish(); reject(new Error(event.data.error)); }
-      else if (event.data.mp3) { finish(); resolve(event.data.mp3); }
+      else if (event.data.key !== undefined) { finish(); resolve({ key: event.data.key, mp3: event.data.mp3 }); }
+      else if (event.data.analyzing) onProgress("Detecting musical key…");
       else if (event.data.percent !== undefined) onProgress(`Creating MP3… ${event.data.percent}%`);
     };
-    worker.postMessage({ channels, sampleRate: audio.sampleRate }, channels.map(channel => channel.buffer));
+    worker.postMessage({ channels, sampleRate: audio.sampleRate, encode, analyze }, channels.map(channel => channel.buffer));
   });
-  const mp3 = new File([encoded], name, { type: "audio/mpeg" });
-  return {
-    mp3,
-    preview: mp3,
-    duration: Math.max(1, Math.round(audio.duration)),
-  };
+  return { ...result, duration: Math.max(1, Math.round(audio.duration)) };
+}
+
+export async function detectWavKey(file: File, onProgress: (message: string) => void) {
+  return (await processWav(file, onProgress, false, true)).key;
+}
+
+export async function wavToMp3(file: File, onProgress: (message: string) => void, analyze = true) {
+  const { mp3: encoded, key, duration } = await processWav(file, onProgress, true, analyze);
+  if (!encoded) throw new Error("Couldn't create the MP3.");
+  const mp3 = new File([encoded], file.name.replace(/\.wav$/i, ".mp3"), { type: "audio/mpeg" });
+  return { mp3, preview: mp3, key, duration };
 }

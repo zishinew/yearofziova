@@ -78,6 +78,26 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
     }
   }
 
+  function detectKey() {
+    const input = form.current?.elements.namedItem("musicalKey");
+    if (!(input instanceof HTMLInputElement)) return;
+    setError("");
+    startTransition(async () => {
+      try {
+        setStatus(wavFile ? "Reading WAV…" : "Loading original WAV…");
+        const source = wavFile ?? (track && await storedBeatWav(createBrowserSupabaseClient(), track.id));
+        if (!source) throw new Error("Choose a WAV to detect its key.");
+        const { detectWavKey } = await import("@/lib/wav-to-mp3");
+        const detected = await detectWavKey(source, setStatus);
+        if (detected) input.value = detected;
+        setStatus(detected ? `Detected ${detected}. You can edit it before saving.` : "No clear key detected. You can enter one manually.");
+      } catch (problem) {
+        setStatus("");
+        setError(problem instanceof Error ? problem.message : "Couldn't detect the key.");
+      }
+    });
+  }
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (coverLoading) return;
@@ -105,6 +125,7 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
           values.set("cover", await croppedCover(coverCrop));
         }
         let generatedDuration: number | null = null;
+        let musicalKey = kind === "beats" ? String(values.get("musicalKey") ?? "").trim() : track?.musical_key ?? "";
         let sourceWav = values.get("wav");
         const replacingSource = sourceWav instanceof File && sourceWav.size > 0;
         if (kind === "beats" && track && regenerateFullPreview && !replacingSource) {
@@ -113,7 +134,8 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
         }
         if (kind === "beats" && sourceWav instanceof File && sourceWav.size) {
           const { wavToMp3 } = await import("@/lib/wav-to-mp3");
-          const generated = await wavToMp3(sourceWav, setStatus);
+          const generated = await wavToMp3(sourceWav, setStatus, !musicalKey);
+          musicalKey ||= generated.key;
           if (replacingSource) values.set("mp3", generated.mp3);
           values.set("preview", generated.preview);
           generatedDuration = generated.duration;
@@ -131,7 +153,7 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
         const payload: AdminTrack = {
           id, kind, title: parsed.title, bpm: Number(values.get("bpm")),
           duration_seconds: duration ? Number(duration) : generatedDuration ?? (preview ? await audioLength(preview.file) : track?.duration_seconds ?? null),
-          genre: track?.genre || "", musical_key: track?.musical_key || "",
+          genre: track?.genre || "", musical_key: musicalKey,
           description: track?.description || "",
           moods: track?.moods || [], tags: list(values.get("tags"), ","), notes: [...new Set([...list(values.get("notes"), "\n"), ...parsed.notes])],
           preview_start_seconds: 0, preview_path: previewPath, cover_path: kind === "beats" ? cover?.path || track?.cover_path || null : null,
@@ -173,7 +195,13 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
           <label>Tags<span className="admin-hint">Separate with commas</span><input name="tags" maxLength={2400} defaultValue={track?.tags.join(", ")} /></label>
           <label>Additional notes<span className="admin-hint">One per line</span><textarea name="notes" maxLength={15000} rows={2} defaultValue={track?.notes.join("\n")} /></label>
           {kind === "beats" ? <>
-            <label>Beat audio (WAV)<span className="admin-hint">One file creates the full WAV + 320 kbps MP3 downloads and a full length preview{track ? " · leave empty to keep current audio" : ""}</span><input name="wav" type="file" accept=".wav" required={!track} onChange={event => { setWavFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0]); }} /></label>
+            <label>Musical key<span className="admin-hint">Leave blank to detect from the WAV on upload.</span><input name="musicalKey" maxLength={40} defaultValue={track?.musical_key} placeholder="e.g. F♯ minor" /></label>
+            {(track || wavFile) && <button type="button" className="auth-text-link" onClick={detectKey}>Detect key</button>}
+            <label>Beat audio (WAV)<span className="admin-hint">One file creates the full WAV + 320 kbps MP3 downloads and a full length preview{track ? " · leave empty to keep current audio" : ""}</span><input name="wav" type="file" accept=".wav" required={!track} onChange={event => {
+              const file = event.target.files?.[0] || null;
+              setWavFile(file);
+              readFilename(file ?? undefined);
+            }} /></label>
             {track && <label className="admin-checkbox"><input type="checkbox" checked={regenerateFullPreview} onChange={event => setRegenerateFullPreview(event.target.checked)} /><span>Regenerate the full length preview from the stored WAV</span></label>}
             <CoverCropper value={coverCrop} onChange={setCoverCrop} onLoading={setCoverLoading} existingCover={Boolean(track?.cover_path)} />
           </> : <>

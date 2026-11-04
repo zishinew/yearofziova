@@ -30,6 +30,7 @@ function TrackRow({ track, kind }: { track: Beat; kind: "beats" | "loops" }) {
       </span>
       <span className="track-tags playlist-inline-tags" aria-label="Tags" title={track.tags?.join(" · ")}>{track.tags?.map((tag, i) => <span key={`${tag}-${i}`}>{tag}</span>)}</span>
       <span className="playlist-number"><span className="sr-only">BPM: </span>{track.bpm}</span>
+      {kind === "beats" && <span className="playlist-number playlist-key" title={track.key || undefined}><span className="sr-only">Key: </span>{track.key || "—"}</span>}
       <span className="playlist-number"><span className="sr-only">Duration: </span>{duration(track.durationSeconds)}</span>
     </button>
     {isAdmin ? <div className="playlist-admin-actions"><CatalogEdit id={track.id} title={track.title} /><AdminTrackDownload id={track.id} title={track.title} /></div> : kind === "beats" ? <button type="button" className="track-add" aria-label={`${label} for ${track.title}`} onClick={() => cart.add(track)}>{label}</button> : <LoopDownload id={track.id} title={track.title} />}
@@ -37,8 +38,8 @@ function TrackRow({ track, kind }: { track: Beat; kind: "beats" | "loops" }) {
 }
 export function SoundPlaylist({ kind, tracks, loadError = false }: { kind: "beats" | "loops"; tracks: Beat[]; loadError?: boolean }) {
   const title = kind === "beats" ? "Beat Vault" : "Loop Kit";
-  return <section className="sound-playlist" aria-label={title}><h1>{title}</h1>
-    <div className="playlist-table"><div className="playlist-columns" aria-hidden="true"><span>Title</span><span>Tags</span><span>BPM</span><span>Time</span><span /></div>
+  return <section className={kind === "beats" ? "sound-playlist beat-playlist" : "sound-playlist"} aria-label={title}><h1>{title}</h1>
+    <div className="playlist-table"><div className="playlist-columns" aria-hidden="true"><span>Title</span><span>Tags</span><span>BPM</span>{kind === "beats" && <span>Key</span>}<span>Time</span><span /></div>
     <div className="playlist-tracks">{tracks.map(track => <TrackRow key={track.id} track={track} kind={kind} />)}
       {loadError && <p className="playlist-empty" role="status">Couldn’t load the catalog. Please refresh and try again.</p>}
       {!loadError && tracks.length === 0 && <p className="playlist-empty">{kind === "beats" ? "Beats" : "Loops"} coming soon.</p>}
