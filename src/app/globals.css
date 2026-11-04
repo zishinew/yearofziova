@@ -46,7 +46,9 @@ body {
   will-change: transform;
 }
 
-.site-fluid { position: fixed; inset: 0; width: 100vw; height: 100dvh; z-index: -1; pointer-events: none; opacity: 0.32; }
+/* Cover the viewport without resizing the simulation as browser bars move. */
+.site-fluid { position: fixed; inset: 0; width: 100vw; height: 100lvh; z-index: -1; pointer-events: none; opacity: 0.32; }
+@media (max-width: 639px) { .site-fluid { opacity: 0.22; } }
 .vault-landing { min-height: 100dvh; display: grid; place-items: center; }
 .vault-choices { display: flex; align-items: center; justify-content: center; gap: clamp(64px, 14vw, 220px); padding: 24px; }
 .vault-choices button { cursor: pointer; font-family: "Courier New", monospace; font-size: 16px; padding: 24px 12px; transition: color 300ms ease, transform 180ms; }

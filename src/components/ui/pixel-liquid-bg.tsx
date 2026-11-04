@@ -393,6 +393,8 @@ class MouseGL {
     const t = e.touches[0];
     this.onInteract?.();
     this._set(t.clientX, t.clientY);
+    // A new finger position is an anchor, not motion from the previous input.
+    if (e.type === "touchstart") this.coords_old.copy(this.coords);
   }
 
   private _set(cx: number, cy: number) {
@@ -753,8 +755,10 @@ class FluidSim {
     }
 
     {
-      const mf = opts.mouse_force;
-      const cs = opts.cursor_size;
+      // Keep the brush from taking up most of a narrow viewport.
+      const viewportScale = Math.min(1, this.gl.width / 768);
+      const mf = opts.mouse_force * viewportScale;
+      const cs = opts.cursor_size * viewportScale;
       const u = (this.externalForce.mesh.material as THREE.RawShaderMaterial)
         .uniforms;
       u.force.value.set((mouse.diff.x / 2) * mf, (mouse.diff.y / 2) * mf);
