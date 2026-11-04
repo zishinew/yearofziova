@@ -8,6 +8,7 @@ export function GiftCodeForm() {
   return <div>
     <form action={action} className="admin-fields">
       <label>Label<input name="label" required maxLength={80} placeholder="e.g. Alex" /></label>
+      <label>Gift code<span className="admin-hint">8–48 letters, numbers, hyphens, or underscores. Case insensitive.</span><input name="code" required minLength={8} maxLength={48} pattern="[A-Za-z0-9][A-Za-z0-9_-]{7,47}" placeholder="e.g. ZIOVA-FRIENDS" autoComplete="off" spellCheck={false} /></label>
       <button className="auth-submit" disabled={pending}>{pending ? "Creating…" : "Create gift code"}</button>
     </form>
     {result.error && <p className="auth-error" role="alert">{result.error}</p>}

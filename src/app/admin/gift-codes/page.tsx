@@ -16,7 +16,7 @@ export default async function GiftCodesPage() {
     <section className="admin-dashboard">
       <Link href="/admin" className="auth-text-link admin-entry">← Dashboard</Link>
       <div className="downloads-heading"><div><h1>Gift codes</h1>
-        <p>Share a code to make any MP3 or WAV lease in a cart free. Codes can be reused until you revoke them.</p>
+        <p>Choose a memorable code to make any MP3 or WAV lease in a cart free. Codes can be reused until you revoke them.</p>
       </div></div>
       <div className="admin-layout">
         <GiftCodeForm />

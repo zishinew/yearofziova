@@ -3,15 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { getAdminSession } from "@/lib/supabase/admin";
 import { createServiceSupabaseClient } from "@/lib/supabase/service";
-import { giftCodeHash, newGiftCode } from "@/lib/gift-code";
+import { giftCodeHash, isGiftCode, normalizeGiftCode } from "@/lib/gift-code";
 import { UUID } from "@/lib/track-upload";
 
 export async function createGiftCode(_previous: { code?: string; error?: string }, form: FormData): Promise<{ code?: string; error?: string }> {
   if (!await getAdminSession()) return { error: "Admin access required." };
   const label = String(form.get("label") || "").trim();
   if (!label || label.length > 80) return { error: "Enter a label of up to 80 characters." };
-  const code = newGiftCode();
+  const code = normalizeGiftCode(String(form.get("code") || ""));
+  if (!isGiftCode(code)) return { error: "Use 8–48 letters, numbers, hyphens, or underscores for your code." };
   const { error } = await createServiceSupabaseClient().from("gift_codes").insert({ label, code_hash: giftCodeHash(code) });
+  if (error?.code === "23505") return { error: "That code already exists. Choose a different one." };
   if (error) return { error: "Couldn't create the gift code. Please try again." };
   revalidatePath("/admin/gift-codes");
   return { code };
