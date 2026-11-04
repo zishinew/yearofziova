@@ -358,10 +358,46 @@ body:has(.auth-dialog[open]) .playbar { filter: blur(8px); }
 .playlist-inline-tags span { flex-shrink: 0; font-size: 10px; }
 .playlist-compact-row .track-add { justify-self: end; white-space: nowrap; font-size: 11px; }
 .track-loop-inquiry { justify-self: end; font-size: 11px; white-space: nowrap; }
-@media (max-width: 639px) { .playlist-compact-row, .playlist-table .playlist-columns { gap: 12px; min-width: 620px; } }
 .beat-playlist :is(.playlist-compact-row, .playlist-table .playlist-columns) { grid-template-columns: minmax(145px, 1fr) minmax(115px, 1.2fr) 40px 78px 44px 140px; min-width: 680px; }
 .beat-playlist .playlist-summary { grid-column: 1 / 6; }
 .playlist-key { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 727px) {
+  .playlist-table { overflow: visible; padding: 0; margin: 0; }
+  .playlist-table .playlist-columns { display: none; }
+  .sound-playlist .playlist-table .playlist-compact-row {
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+    gap: 8px;
+    padding: 12px 0;
+  }
+  .playlist-compact-row .playlist-summary {
+    grid-column: 1;
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
+    gap: 8px 12px;
+    min-height: 44px;
+  }
+  .playlist-compact-row .playlist-identity,
+  .playlist-compact-row .playlist-inline-tags { grid-column: 1 / -1; }
+  .playlist-compact-row .playlist-title { white-space: normal; overflow-wrap: anywhere; }
+  .playlist-inline-tags:empty { display: none; }
+  .playlist-compact-row .playlist-number { text-align: left; }
+  .playlist-compact-row .playlist-number:last-child { grid-column: 3; }
+  .playlist-compact-row .playlist-number-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+    font-size: 11px;
+  }
+  .playlist-compact-row .track-add { min-height: 44px; }
+}
+
+@media (hover: none) {
+  .playlist-summary:not(:disabled) .playlist-play-icon { opacity: 1; }
+}
 
 .lease-track-title { margin-top: 20px; font-size: 13px; overflow-wrap: anywhere; color: #737373; }
 .lease-options { margin-top: 20px; border: 0; display: grid; gap: 10px; }

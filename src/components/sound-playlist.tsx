@@ -29,9 +29,9 @@ function TrackRow({ track, kind }: { track: Beat; kind: "beats" | "loops" }) {
         <span className="playlist-name"><span className="playlist-title">{track.title}</span>{track.notes?.length ? <span className="playlist-inline-notes" title={track.notes.join(" · ")}>{track.notes.join(" · ")}</span> : null}</span>
       </span>
       <span className="track-tags playlist-inline-tags" aria-label="Tags" title={track.tags?.join(" · ")}>{track.tags?.map((tag, i) => <span key={`${tag}-${i}`}>{tag}</span>)}</span>
-      <span className="playlist-number"><span className="sr-only">BPM: </span>{track.bpm}</span>
-      {kind === "beats" && <span className="playlist-number playlist-key" title={track.key || undefined}><span className="sr-only">Key: </span>{track.key || "—"}</span>}
-      <span className="playlist-number"><span className="sr-only">Duration: </span>{duration(track.durationSeconds)}</span>
+      <span className="playlist-number"><span className="sr-only playlist-number-label">BPM: </span>{track.bpm}</span>
+      {kind === "beats" && <span className="playlist-number playlist-key" title={track.key || undefined}><span className="sr-only playlist-number-label">Key: </span>{track.key || "—"}</span>}
+      <span className="playlist-number"><span className="sr-only playlist-number-label">Time: </span>{duration(track.durationSeconds)}</span>
     </button>
     {isAdmin ? <div className="playlist-admin-actions"><CatalogEdit id={track.id} title={track.title} /><AdminTrackDownload id={track.id} title={track.title} /></div> : kind === "beats" ? <button type="button" className="track-add" aria-label={`${label} for ${track.title}`} onClick={() => cart.add(track)}>{label}</button> : <LoopDownload id={track.id} title={track.title} />}
   </article>;
