@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { watchAudioProgress } from "@/lib/audio-progress";
 import type { Beat } from "@/data/beats";
 import { useCart } from "@/components/shopping-cart";
+import { guestOwnershipChanged, readGuestOwnedTracks } from "@/components/guest-purchase-sync";
 
 type Playback = { track: Beat | null; playing: boolean; play: (track: Beat) => void; playFile: (track: Beat, file: File) => void };
 const PlaybackContext = createContext<Playback>({ track: null, playing: false, play: () => {}, playFile: () => {} });
@@ -54,6 +55,16 @@ export function AudioPlayer({ children }: { children: ReactNode }) {
   const nextInterruptionAt = useRef(30);
   const volumeRef = useRef(0.8);
   const cart = useCart();
+  const [guestOwnedTracks, setGuestOwnedTracks] = useState<string[]>(() => typeof window === "undefined" ? [] : readGuestOwnedTracks());
+  useEffect(() => {
+    const refresh = () => setGuestOwnedTracks(readGuestOwnedTracks());
+    window.addEventListener(guestOwnershipChanged, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(guestOwnershipChanged, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
   useEffect(() => () => { if (localSource.current) URL.revokeObjectURL(localSource.current.url); }, []);
   const [track, setTrack] = useState<Beat | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -83,7 +94,7 @@ export function AudioPlayer({ children }: { children: ReactNode }) {
     void sound.play().catch(() => stopInterruption());
   }, [stopInterruption]);
 
-  const ownsTrack = !!track && cart.owns(track.id);
+  const ownsTrack = !!track && (cart.owns(track.id) || guestOwnedTracks.includes(track.id));
   useEffect(() => {
     if (!track || track.kind !== "beats" || !playing || !cart.ownershipReady || ownsTrack) {
       stopInterruption();

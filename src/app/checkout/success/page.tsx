@@ -12,6 +12,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { fulfillSession } from "@/lib/checkout-fulfillment";
 import { getAdminSession } from "@/lib/supabase/admin";
 import { parseCheckoutItems } from "@/lib/payments";
+import { GuestPurchaseSync } from "@/components/guest-purchase-sync";
 export const dynamic = "force-dynamic";
 export default async function CheckoutSuccess({ searchParams }: { searchParams:Promise<{session_id?:string; gift_order?:string}> }) {
   if (await getAdminSession()) redirect("/admin");
@@ -41,7 +42,7 @@ export default async function CheckoutSuccess({ searchParams }: { searchParams:P
   const paid = order?.status === "paid";
   const pending = order?.status === "pending";
   const { data: purchases, error: downloadError } = paid && order
-    ? await db.from("purchases").select("id,product_id,download_products!inner(title,bpm,lease,catalog_tracks(cover_path))")
+    ? await db.from("purchases").select("id,product_id,download_products!inner(catalog_track_id,title,bpm,lease,catalog_tracks(cover_path))")
       .eq("checkout_order_id",order.id).eq("status","paid")
     : { data:null, error:null };
   return <AccountShell>
@@ -52,6 +53,10 @@ export default async function CheckoutSuccess({ searchParams }: { searchParams:P
         <p>{paid ? gift ? "Gift code redeemed. Your files are ready." : "Payment confirmed. Your files are ready." : order?.status === "refunded" ? "This order has been refunded." : "We couldn't find a completed purchase in this browser."}</p>
       </div></div>
       {paid && <>
+        {!user && purchases?.length ? <GuestPurchaseSync trackIds={[...new Set(purchases.flatMap(purchase => {
+          const product = Array.isArray(purchase.download_products) ? purchase.download_products[0] : purchase.download_products;
+          return product?.catalog_track_id ? [product.catalog_track_id] : [];
+        }))]} /> : null}
         {downloadError || !purchases?.length ? <p className="auth-error" role="alert">Couldn’t load your files. Please try again shortly.</p> : <ul className="purchase-grid">
           {purchases.map(purchase => {
             const product = Array.isArray(purchase.download_products) ? purchase.download_products[0] : purchase.download_products;
