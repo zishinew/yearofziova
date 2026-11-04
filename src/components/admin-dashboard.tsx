@@ -1,6 +1,6 @@
 "use client";
 
-import { uploadStorageFile } from "@/lib/storage-upload";
+import { storedBeatWav, uploadStorageFile } from "@/lib/storage-upload";
 import { useId, useRef, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { logout } from "@/app/auth/actions";
@@ -48,6 +48,7 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [coverCrop, setCoverCrop] = useState<CoverSelection | null>(null);
+  const [regenerateFullPreview, setRegenerateFullPreview] = useState(false);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [wavFile, setWavFile] = useState<File | null>(null);
   const previewId = useId();
@@ -104,8 +105,12 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
           values.set("cover", await croppedCover(coverCrop));
         }
         let generatedDuration: number | null = null;
-        const sourceWav = values.get("wav");
+        let sourceWav = values.get("wav");
         const replacingSource = sourceWav instanceof File && sourceWav.size > 0;
+        if (kind === "beats" && track && regenerateFullPreview && !replacingSource) {
+          setStatus("Loading original WAV…");
+          sourceWav = await storedBeatWav(supabase, track.id);
+        }
         if (kind === "beats" && sourceWav instanceof File && sourceWav.size) {
           const { wavToMp3 } = await import("@/lib/wav-to-mp3");
           const generated = await wavToMp3(sourceWav, setStatus);
@@ -140,6 +145,7 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
         autoBpm.current = null;
         autoTitle.current = null;
         setCoverCrop(null);
+        setRegenerateFullPreview(false);
         setStatus(payload.published ? "Published. Your track is now in the catalog." : "Draft saved.");
         onSaved(payload, !track);
       } catch (problem) {
@@ -168,6 +174,7 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
           <label>Additional notes<span className="admin-hint">One per line</span><textarea name="notes" maxLength={15000} rows={2} defaultValue={track?.notes.join("\n")} /></label>
           {kind === "beats" ? <>
             <label>Beat audio (WAV)<span className="admin-hint">One file creates the full WAV + 320 kbps MP3 downloads and a full length preview{track ? " · leave empty to keep current audio" : ""}</span><input name="wav" type="file" accept=".wav" required={!track} onChange={event => { setWavFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0]); }} /></label>
+            {track && <label className="admin-checkbox"><input type="checkbox" checked={regenerateFullPreview} onChange={event => setRegenerateFullPreview(event.target.checked)} /><span>Regenerate the full length preview from the stored WAV</span></label>}
             <CoverCropper value={coverCrop} onChange={setCoverCrop} onLoading={setCoverLoading} existingCover={Boolean(track?.cover_path)} />
           </> : <>
             <label>Playback audio<span className="admin-hint">Public{track ? " · leave empty to keep current" : ""}</span><input name="preview" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac" required={!track} onChange={event => { setPreviewFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0], true); }} /></label>
