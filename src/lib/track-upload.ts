@@ -16,9 +16,20 @@ export function bpmFromFilename(filename: string): number | null {
   return values.size === 1 ? [...values][0] : null;
 }
 
+const detuningPattern = /\bdetuned[\s_]*([+−-]?\d+(?:\.\d+)?)[\s_]*cents?\b/gi;
+
+export function detuningFromText(text: string): number | undefined {
+  const match = [...text.replace(/_+/g, " ").matchAll(detuningPattern)].at(-1);
+  if (!match) return undefined;
+  const value = Number(match[1].replace("−", "-"));
+  if (!Number.isFinite(value)) return undefined;
+  // An unsigned "detuned 50 cents" means down. Explicit signs override that convention.
+  return match[1].startsWith("+") ? value : -Math.abs(value);
+}
+
 export function parseTrackText(text: string) {
   const notes: string[] = [];
-  const title = text.replace(/_+/g, " ").replace(/@yearofziova\b/gi, "").replace(/\bdetuned[\s_]*([+-]?\d+(?:\.\d+)?)[\s_]*cents?\b/gi, (_match, cents: string) => {
+  const title = text.replace(/_+/g, " ").replace(/@yearofziova\b/gi, "").replace(detuningPattern, (_match, cents: string) => {
     const note = `Detuned ${cents} cents`;
     if (!notes.includes(note)) notes.push(note);
     return "";

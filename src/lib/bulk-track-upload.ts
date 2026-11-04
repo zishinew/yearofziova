@@ -1,5 +1,5 @@
 import { uploadStorageFile } from "@/lib/storage-upload";
-import { audioTypes, coverTypes, parseTrackText, type AdminTrack } from "@/lib/track-upload";
+import { audioTypes, coverTypes, detuningFromText, parseTrackText, type AdminTrack } from "@/lib/track-upload";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { saveTrack } from "@/app/admin/actions";
 
@@ -43,7 +43,8 @@ export async function uploadBulkTrack(track: BulkTrack, kind: "beats" | "loops",
     let musicalKey = kind === "beats" ? track.musicalKey?.trim() || "" : "";
     if (kind === "beats") {
       const { wavToMp3 } = await import("@/lib/wav-to-mp3");
-      const generated = await wavToMp3(track.file, onProgress);
+      const detuneCents = detuningFromText(notes.join("\n")) ?? detuningFromText(track.title);
+      const generated = await wavToMp3(track.file, onProgress, !musicalKey, detuneCents);
       musicalKey ||= generated.key ?? "";
       preview = generated.preview; mp3 = generated.mp3; seconds = generated.duration;
     } else {

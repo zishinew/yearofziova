@@ -1,13 +1,13 @@
 import { encodeMp3 } from "./mp3-encode";
 import { detectBeatKey } from "./detect-beat-key";
 
-self.onmessage = (event: MessageEvent<{ channels: Float32Array[]; sampleRate: number; encode: boolean; analyze: boolean }>) => {
+self.onmessage = (event: MessageEvent<{ channels: Float32Array[]; sampleRate: number; encode: boolean; analyze: boolean; detuneCents?: number }>) => {
   try {
-    const { channels, sampleRate, encode, analyze } = event.data;
+    const { channels, sampleRate, encode, analyze, detuneCents } = event.data;
     let key = "";
     if (analyze) {
       self.postMessage({ analyzing: true });
-      key = detectBeatKey(channels, sampleRate);
+      key = detectBeatKey(channels, sampleRate, detuneCents);
     }
     if (!encode) {
       self.postMessage({ key });

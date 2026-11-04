@@ -9,11 +9,15 @@ import { BulkUpload } from "@/components/bulk-upload";
 import { AdminPreview } from "@/components/admin-preview";
 import { saveTrack, setTrackPublished, deleteTrack } from "@/app/admin/actions";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
-import { audioTypes, coverTypes, metadataFromFilename, parseTrackText, type AdminTrack } from "@/lib/track-upload";
+import { audioTypes, coverTypes, detuningFromText, metadataFromFilename, parseTrackText, type AdminTrack } from "@/lib/track-upload";
 import { CoverCropper, croppedCover, type CoverSelection } from "@/components/cover-cropper";
 
 function list(value: FormDataEntryValue | null, separator: string) {
   return String(value || "").split(separator).map(v => v.trim()).filter(Boolean);
+}
+
+function formDetuning(values: FormData) {
+  return detuningFromText(String(values.get("notes") ?? "")) ?? detuningFromText(String(values.get("title") ?? ""));
 }
 
 function audioLength(file: File): Promise<number | null> {
@@ -79,8 +83,10 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
   }
 
   function detectKey() {
-    const input = form.current?.elements.namedItem("musicalKey");
-    if (!(input instanceof HTMLInputElement)) return;
+    const editor = form.current;
+    const input = editor?.elements.namedItem("musicalKey");
+    if (!editor || !(input instanceof HTMLInputElement)) return;
+    const detuneCents = formDetuning(new FormData(editor));
     setError("");
     startTransition(async () => {
       try {
@@ -88,7 +94,7 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
         const source = wavFile ?? (track && await storedBeatWav(createBrowserSupabaseClient(), track.id));
         if (!source) throw new Error("Choose a WAV to detect its key.");
         const { detectWavKey } = await import("@/lib/wav-to-mp3");
-        const detected = await detectWavKey(source, setStatus);
+        const detected = await detectWavKey(source, setStatus, detuneCents);
         if (detected) input.value = detected;
         setStatus(detected ? `Detected ${detected}. You can edit it before saving.` : "No clear key detected. You can enter one manually.");
       } catch (problem) {
@@ -134,7 +140,7 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
         }
         if (kind === "beats" && sourceWav instanceof File && sourceWav.size) {
           const { wavToMp3 } = await import("@/lib/wav-to-mp3");
-          const generated = await wavToMp3(sourceWav, setStatus, !musicalKey);
+          const generated = await wavToMp3(sourceWav, setStatus, !musicalKey, formDetuning(values));
           musicalKey ||= generated.key;
           if (replacingSource) values.set("mp3", generated.mp3);
           values.set("preview", generated.preview);
@@ -193,7 +199,7 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
             <label>Length in seconds<input name="duration" type="number" min={1} max={86400} step={1} placeholder="Auto from audio" defaultValue={track?.duration_seconds ?? ""} /></label>
           </div>
           <label>Tags<span className="admin-hint">Separate with commas</span><input name="tags" maxLength={2400} defaultValue={track?.tags.join(", ")} /></label>
-          <label>Additional notes<span className="admin-hint">One per line</span><textarea name="notes" maxLength={15000} rows={2} defaultValue={track?.notes.join("\n")} /></label>
+          <label>Additional notes<span className="admin-hint">One per line{kind === "beats" && " · Detuned 50 cents means down. Use +50 for up."}</span><textarea name="notes" maxLength={15000} rows={2} defaultValue={track?.notes.join("\n")} /></label>
           {kind === "beats" ? <>
             <label>Musical key<span className="admin-hint">Leave blank to detect from the WAV on upload.</span><input name="musicalKey" maxLength={40} defaultValue={track?.musical_key} placeholder="e.g. F♯ minor" /></label>
             {(track || wavFile) && <button type="button" className="auth-text-link" onClick={detectKey}>Detect key</button>}

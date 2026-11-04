@@ -48,7 +48,7 @@ function rankKeys(chroma: number[]) {
   }).sort((a, b) => b.score - a.score);
 }
 
-export function detectBeatKey(channels: Float32Array[], sampleRate: number): string {
+export function detectBeatKey(channels: Float32Array[], sampleRate: number, detuneCents = 0): string {
   // Sample windows across the whole beat. Decimation gives finer bass pitch resolution.
   const stride = 4;
   const binHz = sampleRate / stride / size;
@@ -87,7 +87,7 @@ export function detectBeatKey(channels: Float32Array[], sampleRate: number): str
       const right = Math.log(Math.max(1e-12, magnitudes[i + 1]));
       const offset = 0.5 * (left - right) / (left + right - 2 * Math.log(magnitude));
       const hz = (i + offset) * binHz;
-      const note = 69 + 12 * Math.log2(hz / 440);
+      const note = 69 + 12 * Math.log2(hz / 440) - detuneCents / 100;
       peaks.push({ note, magnitude, hz });
     }
 

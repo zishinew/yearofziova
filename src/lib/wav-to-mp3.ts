@@ -1,4 +1,6 @@
-async function processWav(file: File, onProgress: (message: string) => void, encode: boolean, analyze: boolean) {
+import { detuningFromText } from "./track-upload";
+
+async function processWav(file: File, onProgress: (message: string) => void, encode: boolean, analyze: boolean, detuneCents?: number) {
   if (!/\.wav$/i.test(file.name) || !file.size) throw new Error("Choose a non-empty WAV file.");
   onProgress("Reading WAV…");
   const input = await file.arrayBuffer();
@@ -22,17 +24,20 @@ async function processWav(file: File, onProgress: (message: string) => void, enc
       else if (event.data.analyzing) onProgress("Detecting musical key…");
       else if (event.data.percent !== undefined) onProgress(`Creating MP3… ${event.data.percent}%`);
     };
-    worker.postMessage({ channels, sampleRate: audio.sampleRate, encode, analyze }, channels.map(channel => channel.buffer));
+    worker.postMessage({
+      channels, sampleRate: audio.sampleRate, encode, analyze,
+      detuneCents: detuneCents ?? detuningFromText(file.name),
+    }, channels.map(channel => channel.buffer));
   });
   return { ...result, duration: Math.max(1, Math.round(audio.duration)) };
 }
 
-export async function detectWavKey(file: File, onProgress: (message: string) => void) {
-  return (await processWav(file, onProgress, false, true)).key;
+export async function detectWavKey(file: File, onProgress: (message: string) => void, detuneCents?: number) {
+  return (await processWav(file, onProgress, false, true, detuneCents)).key;
 }
 
-export async function wavToMp3(file: File, onProgress: (message: string) => void, analyze = true) {
-  const { mp3: encoded, key, duration } = await processWav(file, onProgress, true, analyze);
+export async function wavToMp3(file: File, onProgress: (message: string) => void, analyze = true, detuneCents?: number) {
+  const { mp3: encoded, key, duration } = await processWav(file, onProgress, true, analyze, detuneCents);
   if (!encoded) throw new Error("Couldn't create the MP3.");
   const mp3 = new File([encoded], file.name.replace(/\.wav$/i, ".mp3"), { type: "audio/mpeg" });
   return { mp3, preview: mp3, key, duration };
