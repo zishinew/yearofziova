@@ -18,15 +18,15 @@ export async function uploadStorageFile(client: SupabaseClient, bucket: string, 
     const upload = new Upload(file, {
       endpoint: endpoint.toString(),
       retryDelays: [0, 3000, 5000, 10000, 20000],
-      headers: { authorization: `Bearer ${session.access_token}`, apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, "x-upsert": "false" },
+      headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, "x-upsert": "false" },
       uploadDataDuringCreation: true,
       removeFingerprintOnSuccess: true,
       chunkSize: 6 * 1024 * 1024,
       metadata: { bucketName: bucket, objectName: path, contentType, cacheControl: "3600" },
       onBeforeRequest: async request => {
-        // Refresh credentials during long uploads; Storage still validates authorization.
-        const { data } = await client.auth.getSession();
-        if (!data.session) throw new Error("Please sign in again before uploading.");
+        // Set Authorization only here: XMLHttpRequest appends repeated header values.
+        const { data, error } = await client.auth.getSession();
+        if (error || !data.session) throw new Error("Please sign in again before uploading.");
         request.setHeader("authorization", `Bearer ${data.session.access_token}`);
       },
       onProgress: (sent, total) => onProgress(`Uploading ${file.name}… ${Math.round(sent / total * 100)}%`),

@@ -16,7 +16,8 @@ test("large uploads use authenticated direct Storage with 6 MB chunks, refreshed
   const client = { auth: { getSession: async () => ({data:{session:{access_token:++count === 1 ? "initial" : "refreshed"}},error:null}) } };
   await uploadStorageFile(client,"purchased-beats","track/source.wav",{name:"source.wav",size:100*1024*1024},"audio/wav",message=>messages.push(message));
   assert.equal(options.endpoint,"https://test-project.storage.supabase.co/storage/v1/upload/resumable");
-  assert.equal(options.chunkSize,6*1024*1024); assert.equal(options.headers.authorization,"Bearer initial");
+  assert.equal(options.chunkSize,6*1024*1024);
+  assert.ok(!Object.keys(options.headers).some(name => name.toLowerCase() === "authorization"), "TUS must not set Authorization before onBeforeRequest appends its value");
   assert.equal(options.headers["x-upsert"],"false"); assert.equal(options.removeFingerprintOnSuccess,true);
   assert.deepEqual(options.metadata,{bucketName:"purchased-beats",objectName:"track/source.wav",contentType:"audio/wav",cacheControl:"3600"});
   assert.deepEqual(headers,[["authorization","Bearer refreshed"]]); assert.match(messages[0],/50%/);
