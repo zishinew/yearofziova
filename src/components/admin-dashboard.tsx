@@ -220,7 +220,7 @@ export function AdminDashboard({ tracks, loadError }: { tracks: AdminTrack[]; lo
     });
   }
   return <section className="admin-dashboard">
-    <div className="downloads-heading"><h1>Dashboard</h1><div className="admin-account-actions"><Link href="/account/password" className="auth-text-link">Change password</Link><form action={logout}><button type="submit" className="auth-text-link">Sign out</button></form></div></div>
+    <div className="downloads-heading"><h1>Dashboard</h1><div className="admin-account-actions"><Link href="/admin/gift-codes" className="auth-text-link">Gift codes ↗</Link><Link href="/account/password" className="auth-text-link">Change password</Link><form action={logout}><button type="submit" className="auth-text-link">Sign out</button></form></div></div>
     <div className="admin-tabs" role="group" aria-label="Catalog section">
       <button type="button" disabled={bulkBusy} aria-pressed={kind === "beats"} onClick={() => { setKind("beats"); setEditing(null); }}>Beats</button>
       <button type="button" disabled={bulkBusy} aria-pressed={kind === "loops"} onClick={() => { setKind("loops"); setEditing(null); }}>Loops</button>

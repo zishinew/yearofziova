@@ -99,3 +99,36 @@ test("paid orders grant only the purchased lease, replay safely and cannot be re
  assert.equal((await db.query("select status from checkout_orders where id=$1",[usd])).rows[0].status,"paid");
  } finally {await db.close();}
 });
+
+test("gift redemption is service-only, reusable, atomic and revocable", async () => {
+ const db = await PGlite.create();
+ const migration = async name => db.exec(await readFile(new URL(`../supabase/migrations/${name}`,import.meta.url),"utf8"));
+ try {
+  await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
+    create schema auth; create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
+    create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
+    create schema storage; create table storage.objects(id uuid,bucket_id text,name text);
+    create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);`);
+  for (const name of ["20261002224637_customer_downloads.sql","20261002234529_admin_catalog_uploads.sql","20261003040033_stripe_checkout.sql","20261006040008_guest_checkout_access.sql","20261006235526_usd_checkout_currency.sql","20261104021843_gift_checkout_codes.sql"]) await migration(name);
+  await db.exec("insert into download_products(id,title,storage_path,download_name) values ('beat:wav','Beat','full.wav','beat.wav')");
+  const hash = "b".repeat(64);
+  await db.query("insert into gift_codes(label,code_hash) values ('Friend',$1)",[hash]);
+  const redeem = (product="beat:wav", code=hash) => db.query("select redeem_gift_code($1,$2,null,'friend@example.com',$3,$4) as success",[code,crypto.randomUUID(),"a".repeat(64),JSON.stringify([{product_id:product}])]);
+  for (const role of ["anon","authenticated"]) {
+    await db.exec(`set role ${role}`);
+    await assert.rejects(redeem(),/permission denied/);
+    await assert.rejects(db.query("select * from gift_codes"),/permission denied/);
+    await db.exec("reset role");
+  }
+  await db.exec("set role service_role");
+  assert.equal((await redeem("beat:wav","c".repeat(64))).rows[0].success,false);
+  await assert.rejects(redeem("missing"),/foreign key/);
+  assert.equal((await db.query("select * from checkout_orders")).rows.length,0);
+  assert.equal((await redeem()).rows[0].success,true);
+  assert.equal((await redeem()).rows[0].success,true);
+  await db.exec("update gift_codes set revoked_at=now()");
+  assert.equal((await redeem()).rows[0].success,false);
+  assert.equal((await db.query("select * from checkout_orders where amount=0 and status='paid' and stripe_session_id is null")).rows.length,2);
+  assert.equal((await db.query("select * from purchases where source='gift' and status='paid'")).rows.length,2);
+ } finally { await db.close(); }
+});

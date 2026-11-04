@@ -77,3 +77,5 @@ npm run typecheck
 npm run build
 npm test
 ```
+
+Create reusable gift codes in **Admin → Gift codes**. Copy the code when it’s created and share it privately. In the cart, friends enter their email and the code under **Have a gift code?** to get MP3 or WAV leases without going to Stripe. Revoking a code blocks future redemptions; it does not remove downloads already granted.

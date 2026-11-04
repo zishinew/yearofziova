@@ -14,7 +14,7 @@ const {fulfillSession,processPaymentEvent}=await import(url(compile(fulfillmentS
 const servicesSource=(await readFile(new URL("../src/lib/stripe.ts",import.meta.url),"utf8"))
  .replace('import "server-only";','')
  .replace('import Stripe from "stripe";','class Stripe {}')
- .replace('import { createClient } from "@supabase/supabase-js";','const createClient=()=>({});')
+ .replace('import { createServiceSupabaseClient } from "@/lib/supabase/service";','const createServiceSupabaseClient=()=>({});')
  .replace('"@/lib/stripe-mode"',JSON.stringify(modeUrl));
 const {paymentServices}=await import(url(compile(servicesSource)));
 

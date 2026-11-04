@@ -1,3 +1,5 @@
+import { createServiceSupabaseClient } from "@/lib/supabase/service";
+import { giftCodeHash, isGiftCode } from "@/lib/gift-code";
 import { cookies } from "next/headers";
 import { guestCookieName, guestTokenHash, newGuestToken } from "@/lib/guest-checkout";
 import { randomUUID } from "node:crypto";
@@ -18,13 +20,24 @@ export async function POST(request: Request) {
     if (admin) return fail("Admin accounts cannot purchase beats. Edit tracks from your catalog instead.", 403);
     if (Number(request.headers.get("content-length")) > 16384) return fail("Cart is too large.");
     const body = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) return fail("Invalid checkout request.");
     const email = user?.email?.trim().toLowerCase() || (typeof body.email === "string" ? body.email.trim().toLowerCase() : "");
     if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail("Please enter a valid email address.");
     const items = parseCheckoutItems(body.items);
     if (!items) return fail("Check the beats in your cart.");
-    if (!process.env.STRIPE_WEBHOOK_SECRET) return fail("Online checkout is being set up. Please try again soon.", 503);
-    const { stripe, db } = paymentServices();
-    const { data: tracks, error: trackError } = await db.from("catalog_tracks").select("id,title").eq("published",true).eq("kind","beats").in("id",items.map(i=>i.id));
+    const redeeming = body.giftCode !== undefined;
+    const invalidGift = () => fail("This gift code is invalid or has been revoked.");
+    if (redeeming && (typeof body.giftCode !== "string" || !isGiftCode(body.giftCode))) return invalidGift();
+    const db = createServiceSupabaseClient();
+    const hash = redeeming ? giftCodeHash(body.giftCode) : null;
+    if (hash) {
+      const { data, error } = await db.from("gift_codes").select("id").eq("code_hash", hash).is("revoked_at", null).maybeSingle();
+      if (error) throw error;
+      if (!data) return invalidGift();
+    }
+    const stripe = redeeming ? null : process.env.STRIPE_WEBHOOK_SECRET ? paymentServices().stripe : null;
+    if (!redeeming && !stripe) return fail("Online checkout is being set up. Please try again soon.", 503);
+    const { data: tracks, error: trackError } = await db.from("catalog_tracks").select("id,title").eq("published",true).eq("kind","beats").is("deleted_at",null).in("id",items.map(i=>i.id));
     const { data: products, error: productError } = await db.from("download_products").select("id,catalog_track_id,lease,storage_path").in("catalog_track_id",items.map(i=>i.id));
     if (trackError || productError) throw new Error("Catalog lookup failed");
     const orderItems: { id: string; lease: "mp3" | "wav"; product_id: string; title: string; unit_amount: number }[] = [];
@@ -34,7 +47,7 @@ export async function POST(request: Request) {
       if (!track || !product) return fail("A selected lease is not available yet. Please choose another format or DM @yearofziova.");
       const { data: file, error } = await db.storage.from("purchased-beats").info(product.storage_path);
       if (error || !file) return fail("A selected download is temporarily unavailable.",409);
-      orderItems.push({ ...item, product_id: product.id, title: track.title, unit_amount: LEASE_PRICES[item.lease] });
+      orderItems.push({ ...item, product_id: product.id, title: track.title, unit_amount: redeeming ? 0 : LEASE_PRICES[item.lease] });
     }
     const { data: owned, error: ownershipError } = user ? await db.from("purchases").select("product_id,download_products!inner(catalog_track_id,lease)")
       .eq("user_id",user.id).eq("status","paid").in("download_products.catalog_track_id",orderItems.map(item=>item.id)) : { data: null, error: null };
@@ -45,6 +58,20 @@ export async function POST(request: Request) {
     })) return fail("You already own a selected lease. Choose an unowned format to upgrade.",409);
     const id = randomUUID();
     const token = user ? null : newGuestToken();
+    const saveGuestCookie = async () => {
+      if (token) (await cookies()).set(guestCookieName(id), token, { httpOnly: true, secure: siteOrigin().startsWith("https:"), sameSite: "lax", path: "/", maxAge: 90 * 24 * 60 * 60 });
+    };
+    if (hash) {
+      const { data, error } = await db.rpc("redeem_gift_code", {
+        p_hash: hash, p_id: id, p_user_id: user?.id || null,
+        p_guest_email: token ? email : null, p_guest_hash: token ? guestTokenHash(token) : null, p_items: orderItems,
+      });
+      if (error) throw error;
+      if (!data) return invalidGift();
+      await saveGuestCookie();
+      return Response.json({ url: `/checkout/success?gift_order=${id}` });
+    }
+    if (!stripe) return fail("Online checkout is unavailable.", 503);
     const amount = orderItems.reduce((sum,item)=>sum+item.unit_amount,0);
     const { error: insertError } = await db.from("checkout_orders").insert({ id,user_id:user?.id || null,guest_email: token ? email : null,guest_token_hash: token ? guestTokenHash(token) : null,items:orderItems,amount,currency:"usd" });
     if (insertError) throw insertError;
@@ -61,7 +88,7 @@ export async function POST(request: Request) {
       await stripe.checkout.sessions.expire(session.id);
       throw new Error("Couldn't save checkout");
     }
-    if (token) (await cookies()).set(guestCookieName(id), token, { httpOnly: true, secure: siteOrigin().startsWith("https:"), sameSite: "lax", path: "/", maxAge: 90 * 24 * 60 * 60 });
+    await saveGuestCookie();
     return Response.json({ url:session.url });
   } catch (error) {
     // Keep provider payloads and credentials out of logs and client responses.

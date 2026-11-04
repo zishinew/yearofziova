@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import ts from "typescript";
 const source=(await readFile(new URL("../src/app/account/download-action.ts",import.meta.url),"utf8"))
- .replace('import { paymentServices } from "@/lib/stripe";', 'const paymentServices=()=>({db:globalThis.leaseFixture.db});')
+ .replace('import { createServiceSupabaseClient } from "@/lib/supabase/service";', 'const createServiceSupabaseClient=()=>globalThis.leaseFixture.db;')
  .replace('import { ownsOrder } from "@/lib/guest-checkout";', 'const ownsOrder=async()=>false;')
  .replace('import { createServerSupabaseClient } from "@/lib/supabase/server";', 'const createServerSupabaseClient=async()=>({auth:{getUser:async()=>({data:{user:{id:"buyer",email_confirmed_at:"confirmed"}}})}});');
 const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;

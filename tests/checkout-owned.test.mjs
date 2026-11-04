@@ -12,6 +12,8 @@ source = source.replace('import { cookies } from "next/headers";', 'const cookie
   .replace('import { guestCookieName, guestTokenHash, newGuestToken } from "@/lib/guest-checkout";', 'const guestCookieName = id => `ziova-guest-${id}`; const guestTokenHash = token => "b".repeat(64); const newGuestToken = () => "a".repeat(64);')
   .replace('import { createServerSupabaseClient } from "@/lib/supabase/server";', 'const createServerSupabaseClient = () => globalThis.ownedCheckoutFixture.auth;')
   .replace('"@/lib/payments"',JSON.stringify(payments))
+  .replace('import { createServiceSupabaseClient } from "@/lib/supabase/service";', 'const createServiceSupabaseClient = () => globalThis.ownedCheckoutFixture.services.db;')
+  .replace('"@/lib/gift-code"', JSON.stringify(dataUrl(compile((await readFile(new URL("../src/lib/gift-code.ts", import.meta.url), "utf8")).replace('import "server-only";', '')))))
   .replace('import { paymentServices, siteOrigin } from "@/lib/stripe";', 'const paymentServices = () => globalThis.ownedCheckoutFixture.services; const siteOrigin = () => "http://localhost:3000";');
 const {POST} = await import(dataUrl(compile(source)));
 
@@ -23,7 +25,7 @@ test("checkout rejects an already-owned format but allows a different lease", as
   const db = {
     from(table) {
       const query = {
-        select() { return query; }, eq() { return query; },
+        select() { return query; }, eq() { return query; }, is() { return query; },
         async in() {
           if(table === "catalog_tracks") return {data:[{id,title:"Beat"}]};
           if(table === "download_products") return {data:["mp3","wav"].map(lease=>({id:`${id}:${lease}`,catalog_track_id:id,lease,storage_path:`file.${lease}`}))};
@@ -78,7 +80,7 @@ test("guest checkout uses email without an account and issues a private order co
  const previous=process.env.STRIPE_WEBHOOK_SECRET;
  process.env.STRIPE_WEBHOOK_SECRET="fixture";
  let savedOrder, sessionParams;
- const db={from(table){const query={select(){return query;},eq(){return query;},async in(){
+ const db={from(table){const query={select(){return query;},eq(){return query;},is(){return query;},async in(){
   if(table==="catalog_tracks")return {data:[{id,title:"Beat"}]};
   if(table==="download_products")return {data:[{id:`${id}:mp3`,catalog_track_id:id,lease:"mp3",storage_path:"file.mp3"}]};
   throw Error("Guests must not look up another customer's purchases");
@@ -100,4 +102,43 @@ test("guest checkout uses email without an account and issues a private order co
   assert.notEqual(token,savedOrder.guest_token_hash);
   assert.equal(options.httpOnly,true);assert.equal(options.sameSite,"lax");
  } finally {if(previous===undefined)delete process.env.STRIPE_WEBHOOK_SECRET;else process.env.STRIPE_WEBHOOK_SECRET=previous;delete globalThis.ownedCheckoutFixture;}
+});
+
+test("gift checkout grants a guest order without Stripe and never charges on invalid or revoked codes", async () => {
+  let giftAvailable = true, redeemAllowed = true, granted;
+  const db = {
+    from(table) {
+      const query = {select(){return query;},eq(){return query;},is(){return query;},
+        maybeSingle:async()=>({data:giftAvailable ? {id} : null}),
+        async in() {
+          if (table === "catalog_tracks") return {data:[{id,title:"Beat"}]};
+          if (table === "download_products") return {data:[{id:`${id}:wav`,catalog_track_id:id,lease:"wav",storage_path:"full.wav"}]};
+          throw Error("Unexpected query");
+        }};
+      return query;
+    },
+    rpc:async (name,args)=>{assert.equal(name,"redeem_gift_code");if(redeemAllowed) granted=args;return {data:redeemAllowed};},
+    storage:{from:()=>({info:async()=>({data:{size:100}})})},
+  };
+  globalThis.ownedCheckoutFixture = {auth:null,services:{db,get stripe(){assert.fail("Gift checkout contacted Stripe");}}};
+  const code = "ziova-"+"f".repeat(32);
+  const request = giftCode => new Request("http://localhost:3000/api/checkout",{method:"POST",headers:{origin:"http://localhost:3000"},body:JSON.stringify({giftCode,email:"friend@example.com",items:[{id,lease:"wav"}]})});
+  try {
+    assert.equal((await POST(request("bad-code"))).status,400);
+    giftAvailable = false;
+    assert.equal((await POST(request(code))).status,400);
+    giftAvailable = true; redeemAllowed = false;
+    assert.equal((await POST(request(code))).status,400);
+    assert.equal(granted,undefined);
+    assert.equal(globalThis.ownedCheckoutFixture.cookie,undefined);
+    redeemAllowed = true;
+    const response = await POST(request(" "+code+" "));
+    assert.equal(response.status,200);
+    assert.equal((await response.json()).url,`/checkout/success?gift_order=${granted.p_id}`);
+    assert.equal(granted.p_guest_email,"friend@example.com");
+    assert.equal(granted.p_items[0].unit_amount,0);
+    assert.equal(granted.p_items[0].product_id,`${id}:wav`);
+    assert.match(granted.p_hash,/^[a-f0-9]{64}$/);
+    assert.equal(globalThis.ownedCheckoutFixture.cookie[2].httpOnly,true);
+  } finally { delete globalThis.ownedCheckoutFixture; }
 });

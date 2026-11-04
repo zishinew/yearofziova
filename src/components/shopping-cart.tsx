@@ -36,6 +36,7 @@ export function clearPurchasedCartItems(purchased: CheckoutItem[]) {
 export function ShoppingCart({ children }: { children: ReactNode }) {
   const isAdmin = useAdminMode();
   const [email, setEmail] = useState("");
+  const [giftCode, setGiftCode] = useState("");
   const [signedIn, setSignedIn] = useState(false);
   useEffect(() => {
     const client = createBrowserSupabaseClient();
@@ -88,12 +89,12 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
     element?.showModal();
     return () => { element?.close(); document.body.style.overflow = overflow; };
   }, [opened, isAdmin]);
-  async function checkout(checkoutItems: Item[] = items) {
+  async function checkout(checkoutItems: Item[] = items, code?: string) {
     if (isAdmin) return;
     if (checkingOut) return;
     setCheckingOut(true); setError("");
     try {
-      const response = await fetch("/api/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,items:checkoutItems.map(({id,lease})=>({id,lease}))}) });
+      const response = await fetch("/api/checkout", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email,giftCode:code,items:checkoutItems.map(({id,lease})=>({id,lease}))}) });
       const result = await response.json();
 
       if (!response.ok || !result.url) throw new Error(result.error || "Couldn't start checkout.");
@@ -126,11 +127,20 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
             if (!existing) setNotification(next);
           }
         }}>{checkingOut ? "Opening checkout…" : !ownership.ready ? "Checking ownership…" : !selectedLease ? "All leases owned" : `${upgrading ? "Upgrade lease" : existing ? "Update lease" : "Add to cart"} · ${money(prices[selectedLease])}`}</button>
+        {upgrading && selectedLease && <button type="button" className="auth-text-link cart-change-lease" disabled={checkingOut} onClick={() => {
+          const next = { id: selection.id, title: selection.title, lease: selectedLease };
+          if (write([...items.filter(item => item.id !== next.id), next])) openCart();
+        }}>Use a gift code</button>}
         <a className="lease-exclusive" href="https://www.instagram.com/yearofziova/" target="_blank" rel="noreferrer"><span>Unlimited / Exclusive license</span><span>DM @yearofziova ↗</span></a>
       </> : items.length ? <><ul className="cart-items">{items.map(item => <li key={item.id}><div><p>{item.title}</p><span>{leaseName(item.lease)} · {money(prices[item.lease])}</span><button type="button" className="cart-change-lease" aria-label={`${owns(item.id) ? "Upgrade" : "Change"} lease for ${item.title}`} onClick={() => choose(item)}>{owns(item.id) ? "Upgrade lease" : "Change lease"}</button></div><button type="button" aria-label={`Remove ${item.title} from cart`} onClick={() => write(items.filter(other => other.id !== item.id))}>Remove</button></li>)}</ul>
-        <div className="cart-total"><span>Total</span><span>{money(items.reduce((total, item) => total + prices[item.lease], 0))}</span></div>
+        <div className="cart-total"><span>{giftCode.trim() ? "Subtotal" : "Total"}</span><span>{money(items.reduce((total, item) => total + prices[item.lease], 0))}</span></div>
         <label className="checkout-email">Email<input type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" required /></label>
-        <button className="lease-confirm" type="button" disabled={checkingOut} onClick={() => { void checkout(); }}>{checkingOut ? "Opening checkout…" : "Checkout ↗"}</button>
+        <details className="cart-gift-code" open={giftCode.trim() ? true : undefined}>
+          <summary>Have a gift code?</summary>
+          <label className="checkout-email">Gift code<input value={giftCode} maxLength={48} autoComplete="off" spellCheck={false} placeholder="ZIOVA-…" onChange={event => setGiftCode(event.target.value)} /></label>
+          {giftCode.trim() && <p className="cart-note">A valid gift code makes this cart free.</p>}
+        </details>
+        <button className="lease-confirm" type="button" disabled={checkingOut} onClick={() => { void checkout(items, giftCode.trim() || undefined); }}>{checkingOut ? giftCode.trim() ? "Redeeming…" : "Opening checkout…" : giftCode.trim() ? "Redeem gift code" : "Checkout ↗"}</button>
         <p className="cart-note">{signedIn ? "Purchases are saved to your account." : <>No account needed. <Link href="/login?signup=1" scroll={false} onClick={() => setOpened(false)}>Create an account</Link> for easier access to your beats on any device.</>}</p>
       </> : <p className="cart-note">Your cart is empty.</p>}
       {error && <p className="auth-error" role="alert">{error}</p>}

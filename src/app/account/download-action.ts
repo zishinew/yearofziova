@@ -1,6 +1,6 @@
 "use server";
 
-import { paymentServices } from "@/lib/stripe";
+import { createServiceSupabaseClient } from "@/lib/supabase/service";
 import { ownsOrder } from "@/lib/guest-checkout";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -11,7 +11,7 @@ export async function downloadPurchase(purchaseId: string, format?: "mp3" | "wav
   const supabase = await createServerSupabaseClient();
   if (!supabase) return { error: "Downloads are not available yet." };
   const { data: { user }, error: authError } = await supabase.auth.getUser();
-  const { db } = paymentServices();
+  const db = createServiceSupabaseClient();
   const { data, error } = await db.from("purchases")
     .select("checkout_orders(id,user_id,guest_token_hash),download_products!inner(storage_path, download_name,lease,catalog_track_id),user_id")
     .eq("id", purchaseId).eq("status", "paid").single();

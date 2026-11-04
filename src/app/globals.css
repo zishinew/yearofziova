@@ -458,3 +458,8 @@ body:has(.auth-dialog[open]) .playbar { filter: blur(8px); }
 .playlist-admin-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
 .admin-download-files { display: grid; gap: 12px; margin-top: 24px; }
 .admin-download-files button { padding: 14px; text-align: left; }
+
+.cart-gift-code { margin: 0 0 16px; font-size: 12px; }
+.cart-gift-code summary { cursor: pointer; width: fit-content; }
+.cart-gift-code .checkout-email { margin: 12px 0 0; }
+.gift-code-result { overflow-wrap: anywhere; }
