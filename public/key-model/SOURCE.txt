@@ -1,0 +1,12 @@
+OpenKeyScan v2, copyright Alexander Sommer (MIT; see LICENSE.txt).
+https://github.com/rekordcloud/openkeyscan-analyzer/tree/6a2915f43b3bf2c825ddf508e2a703ffd4df8fb6
+
+The ONNX file is an inference export of checkpoints/openkeyscan2.pt at
+the pinned revision. To reproduce it, load that state dict in model.KeyNet
+with Nf inferred from conv1.conv.weight.shape[0], put it in eval mode, and
+export at opset 17 with input cqt [1, 1, 105, frames] and output logits.
+The input's time axis is dynamic. Output classes use the upstream Camelot
+order (1A to 12A, then 1B to 12B).
+
+Source checkpoint SHA-256: 4f73d5082a4977a9fa1f0c441318b07c127b36f0e654ad984a30cbcde206cbe7
+ONNX artifact SHA-256: ed6bda65845f7c0408b21b5a3587bdd1f71de2cbb3243bb6b184e97e616f97e7

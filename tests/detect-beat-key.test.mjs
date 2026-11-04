@@ -1,13 +1,31 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import ts from "typescript";
+import { env, InferenceSession, Tensor } from "onnxruntime-web";
 
-const source = await readFile(new URL("../src/lib/detect-beat-key.ts", import.meta.url), "utf8");
-const { outputText } = ts.transpileModule(source, {
-  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
-});
-const { detectBeatKey } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString("base64")}`);
+async function moduleUrl(file, rewrite = source => source) {
+  const source = rewrite(await readFile(new URL(file, import.meta.url), "utf8"));
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  });
+  return `data:text/javascript;base64,${Buffer.from(outputText).toString("base64")}`;
+}
+const featureUrl = await moduleUrl("../src/lib/open-key-features.ts");
+const { keyBins, openKeyFeatures } = await import(featureUrl);
+const { selectOpenKey } = await import(await moduleUrl("../src/lib/open-key-model.ts", source =>
+  source.replace('"./open-key-features"', JSON.stringify(featureUrl))
+    .replace('"onnxruntime-web/wasm"', JSON.stringify(import.meta.resolve("onnxruntime-web")))));
+env.wasm.numThreads = 1;
+const session = await InferenceSession.create(await readFile(new URL("../public/key-model/openkeyscan2.onnx", import.meta.url)), { executionProviders: ["wasm"] });
+after(() => session.release());
+
+async function detectBeatKey(channels, sampleRate, cents) {
+  const features = openKeyFeatures(channels, sampleRate, cents);
+  if (!features) return "";
+  const { logits } = await session.run({ cqt: new Tensor("float32", features.data, [1, 1, keyBins, features.frames]) });
+  return selectOpenKey(logits.data);
+}
 
 const sampleRate = 44_100;
 const cMajor = [[48, 60, 64, 67], [53, 60, 65, 69], [55, 59, 62, 67], [48, 60, 64, 67]];
@@ -33,17 +51,17 @@ function makeBeat(chords, cents, melodyLevel) {
   });
 }
 
-test("quiet chords remain detectable over a loud 808 and percussion", () => {
-  assert.equal(detectBeatKey([makeBeat(cMajor, 0, 0.013)], sampleRate), "C major");
-  assert.equal(detectBeatKey([makeBeat(aMinor, 0, 0.013)], sampleRate), "A minor");
+test("quiet chords remain detectable over a loud 808 and percussion", async () => {
+  assert.equal(await detectBeatKey([makeBeat(cMajor, 0, 0.013)], sampleRate), "C major");
+  assert.equal(await detectBeatKey([makeBeat(aMinor, 0, 0.013)], sampleRate), "A minor");
 });
 
-test("a declared half semitone shift preserves the original key", () => {
-  assert.equal(detectBeatKey([makeBeat(cMajor, -50, 0.022)], sampleRate, -50), "C major");
-  assert.equal(detectBeatKey([makeBeat(aMinor, 50, 0.022)], sampleRate, 50), "A minor");
+test("a declared half semitone shift preserves the original key", async () => {
+  assert.equal(await detectBeatKey([makeBeat(cMajor, -50, 0.022)], sampleRate, -50), "C major");
+  assert.equal(await detectBeatKey([makeBeat(aMinor, 50, 0.022)], sampleRate, 50), "A minor");
 });
 
-test("silence and an isolated bass note with percussion have no major or minor label", () => {
-  assert.equal(detectBeatKey([new Float32Array(sampleRate * 8)], sampleRate), "");
-  assert.equal(detectBeatKey([makeBeat([[48]], 0, 0)], sampleRate), "");
+test("silence and an isolated bass note with percussion have no major or minor label", async () => {
+  assert.equal(await detectBeatKey([new Float32Array(sampleRate * 8)], sampleRate), "");
+  assert.equal(await detectBeatKey([makeBeat([[48]], 0, 0)], sampleRate), "");
 });

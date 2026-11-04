@@ -1,13 +1,18 @@
 import { encodeMp3 } from "./mp3-encode";
-import { detectBeatKey } from "./detect-beat-key";
 
-self.onmessage = (event: MessageEvent<{ channels: Float32Array[]; sampleRate: number; encode: boolean; analyze: boolean; detuneCents?: number }>) => {
+self.onmessage = async (event: MessageEvent<{ channels: Float32Array[]; sampleRate: number; encode: boolean; analyze: boolean; detuneCents?: number }>) => {
   try {
     const { channels, sampleRate, encode, analyze, detuneCents } = event.data;
     let key = "";
     if (analyze) {
       self.postMessage({ analyzing: true });
-      key = detectBeatKey(channels, sampleRate, detuneCents);
+      try {
+        const { detectOpenKey } = await import("./open-key-model");
+        key = await detectOpenKey(channels, sampleRate, detuneCents);
+      } catch {
+        // A model download or inference failure should not prevent an upload.
+        if (!encode) throw new Error("Couldn't run the key detector. Try again or enter the key manually.");
+      }
     }
     if (!encode) {
       self.postMessage({ key });
