@@ -137,7 +137,7 @@ export function ShoppingCart({ children }: { children: ReactNode }) {
         <label className="checkout-email">Email<input type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" required /></label>
         <details className="cart-gift-code" open={giftCode.trim() ? true : undefined}>
           <summary>Have a gift code?</summary>
-          <label className="checkout-email">Gift code<input value={giftCode} maxLength={48} autoComplete="off" spellCheck={false} placeholder="ZIOVA-…" onChange={event => setGiftCode(event.target.value)} /></label>
+          <label className="checkout-email">Gift code<input value={giftCode} maxLength={48} autoComplete="off" spellCheck={false} onChange={event => setGiftCode(event.target.value)} /></label>
           {giftCode.trim() && <p className="cart-note">A valid gift code makes this cart free.</p>}
         </details>
         <button className="lease-confirm" type="button" disabled={checkingOut} onClick={() => { void checkout(items, giftCode.trim() || undefined); }}>{checkingOut ? giftCode.trim() ? "Redeeming…" : "Opening checkout…" : giftCode.trim() ? "Redeem gift code" : "Checkout ↗"}</button>
