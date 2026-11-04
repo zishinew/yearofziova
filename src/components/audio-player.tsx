@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { PlaybackIcon } from "@/components/playback-icon";
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject, type CSSProperties } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type RefObject, type CSSProperties } from "react";
 import { watchAudioProgress } from "@/lib/audio-progress";
 import type { Beat } from "@/data/beats";
+import { useCart } from "@/components/shopping-cart";
 
 type Playback = { track: Beat | null; playing: boolean; play: (track: Beat) => void; playFile: (track: Beat, file: File) => void };
 const PlaybackContext = createContext<Playback>({ track: null, playing: false, play: () => {}, playFile: () => {} });
@@ -46,8 +47,13 @@ function PlaybackProgress({ audio, length, shownLength, onSeek }: { audio: RefOb
 }
 export function AudioPlayer({ children }: { children: ReactNode }) {
   const audio = useRef<HTMLAudioElement>(null);
+  const interruption = useRef<HTMLAudioElement>(null);
   const request = useRef(0);
   const localSource = useRef<{ file: File; url: string } | null>(null);
+  const interruptionActive = useRef(false);
+  const nextInterruptionAt = useRef(30);
+  const volumeRef = useRef(0.8);
+  const cart = useCart();
   useEffect(() => () => { if (localSource.current) URL.revokeObjectURL(localSource.current.url); }, []);
   const [track, setTrack] = useState<Beat | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -55,6 +61,44 @@ export function AudioPlayer({ children }: { children: ReactNode }) {
   const [volume, setVolume] = useState(0.8);
   const previousVolume = useRef(0.8);
   const [error, setError] = useState("");
+
+  const stopInterruption = useCallback(() => {
+    if (!interruptionActive.current) return;
+    interruptionActive.current = false;
+    if (interruption.current) {
+      interruption.current.pause();
+      interruption.current.currentTime = 0;
+    }
+    if (audio.current) audio.current.volume = volumeRef.current;
+  }, []);
+
+  const playInterruption = useCallback(() => {
+    const sound = interruption.current;
+    const player = audio.current;
+    if (!sound || !player || interruptionActive.current || player.paused) return;
+    interruptionActive.current = true;
+    player.volume = volumeRef.current * 0.3;
+    sound.volume = volumeRef.current;
+    sound.currentTime = 0;
+    void sound.play().catch(() => stopInterruption());
+  }, [stopInterruption]);
+
+  const ownsTrack = !!track && cart.owns(track.id);
+  useEffect(() => {
+    if (!track || track.kind !== "beats" || !playing || !cart.ownershipReady || ownsTrack) {
+      stopInterruption();
+      return;
+    }
+    const timer = window.setInterval(() => {
+      const player = audio.current;
+      if (player && player.currentTime >= nextInterruptionAt.current) {
+        nextInterruptionAt.current = player.currentTime + 30;
+        playInterruption();
+      }
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [track, playing, cart.ownershipReady, ownsTrack, playInterruption, stopInterruption]);
+  useEffect(() => () => stopInterruption(), [stopInterruption]);
 
   async function resume() {
     const player = audio.current;
@@ -71,7 +115,7 @@ export function AudioPlayer({ children }: { children: ReactNode }) {
   }
   function toggle() {
     if (!audio.current) return;
-    if (!audio.current.paused) { request.current++; audio.current.pause(); }
+    if (!audio.current.paused) { request.current++; stopInterruption(); audio.current.pause(); }
     else void resume();
   }
   function play(next: Beat) {
@@ -79,6 +123,8 @@ export function AudioPlayer({ children }: { children: ReactNode }) {
     if (!player || !next.audioUrl) return;
     if (track?.id === next.id && track.audioUrl === next.audioUrl) { toggle(); return; }
     request.current++;
+    stopInterruption();
+    nextInterruptionAt.current = 30;
     player.pause();
     player.src = next.audioUrl;
     releaseLocalSource();
@@ -100,12 +146,15 @@ export function AudioPlayer({ children }: { children: ReactNode }) {
     localSource.current = { file, url };
   }
   function changeVolume(next: number) {
+    volumeRef.current = next;
     setVolume(next);
-    if (audio.current) audio.current.volume = next;
+    if (audio.current) audio.current.volume = interruptionActive.current ? next * 0.3 : next;
+    if (interruption.current && interruptionActive.current) interruption.current.volume = next;
     if (next > 0) previousVolume.current = next;
   }
   function close() {
     request.current++;
+    stopInterruption();
     const player = audio.current;
     player?.pause();
     player?.removeAttribute("src");
@@ -119,10 +168,11 @@ export function AudioPlayer({ children }: { children: ReactNode }) {
   const shownLength = length || track?.durationSeconds || 0;
   return <PlaybackContext.Provider value={{ track, playing, play, playFile }}>
     {children}
-    <audio ref={audio} preload="metadata" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)}
+    <audio ref={audio} preload="metadata" onPlay={() => setPlaying(true)} onPause={() => { setPlaying(false); stopInterruption(); }} onEnded={() => setPlaying(false)}
       onLoadedMetadata={event => { const duration = event.currentTarget.duration; setLength(Number.isFinite(duration) ? duration : 0); }}
       onDurationChange={event => { const duration = event.currentTarget.duration; setLength(Number.isFinite(duration) ? duration : 0); }}
       onError={() => { setPlaying(false); setError("This track is unavailable. Please try again later."); }} />
+    <audio ref={interruption} src="/buy-the-beat.wav" preload="auto" onEnded={stopInterruption} onError={stopInterruption} />
     {track && <section className="playbar" aria-label="Audio player">
       <div className="playbar-track">
         {track.coverArt ? <Image src={track.coverArt} alt="" width={44} height={44} className="playbar-cover" /> : <span className="playbar-cover playbar-cover-empty" aria-hidden="true">♫</span>}

@@ -3,7 +3,7 @@ import { audioTypes, coverTypes, parseTrackText, type AdminTrack } from "@/lib/t
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { saveTrack } from "@/app/admin/actions";
 
-export type BulkTrack = { id: string; file: File; preview: File | null; cover: File | null; title: string; bpm: string; previewStart?: number };
+export type BulkTrack = { id: string; file: File; preview: File | null; cover: File | null; title: string; bpm: string };
 export function bulkTrackError(track: BulkTrack, kind: "beats" | "loops") {
   if (!track.title.trim() || track.title.length > 120) return "Enter a title up to 120 characters.";
   const bpm = Number(track.bpm);
@@ -12,7 +12,6 @@ export function bulkTrackError(track: BulkTrack, kind: "beats" | "loops") {
   if (kind === "loops" && !track.preview) return "Choose preview audio for this ZIP.";
   for (const file of [track.file, track.preview]) if (file && !file.size) return "Choose non-empty audio and ZIP files.";
   if (track.cover && !track.cover.size) return "Choose a non-empty cover image.";
-  if (kind === "beats" && (!Number.isFinite(track.previewStart ?? 0) || (track.previewStart ?? 0) < 0)) return "Choose a valid preview start in seconds.";
   return null;
 }
 
@@ -42,7 +41,7 @@ export async function uploadBulkTrack(track: BulkTrack, kind: "beats" | "loops",
     let seconds: number;
     if (kind === "beats") {
       const { wavToMp3 } = await import("@/lib/wav-to-mp3");
-      const generated = await wavToMp3(track.file, onProgress, track.previewStart ?? 0);
+      const generated = await wavToMp3(track.file, onProgress);
       preview = generated.preview; mp3 = generated.mp3; seconds = generated.duration;
     } else {
       onProgress("Reading preview…");
@@ -58,7 +57,7 @@ export async function uploadBulkTrack(track: BulkTrack, kind: "beats" | "loops",
       leases.push({ lease: "mp3", path, name: name(mp3) }, { lease: "wav", path: downloadPath, name: name(track.file) });
     }
     const parsed = parseTrackText(track.title);
-    const payload: AdminTrack = { id: track.id, kind, title: parsed.title || "Untitled", bpm: Number(track.bpm), duration_seconds: seconds, preview_start_seconds: kind === "beats" ? track.previewStart ?? 0 : 0, genre: "", musical_key: "", description: "", moods: [], tags, notes: [...new Set([...notes, ...parsed.notes])], preview_path: previewPath, cover_path: coverPath, published };
+    const payload: AdminTrack = { id: track.id, kind, title: parsed.title || "Untitled", bpm: Number(track.bpm), duration_seconds: seconds, preview_start_seconds: 0, genre: "", musical_key: "", description: "", moods: [], tags, notes: [...new Set([...notes, ...parsed.notes])], preview_path: previewPath, cover_path: coverPath, published };
     onProgress("Saving track…");
     const result = await saveTrack(payload, kind === "loops" ? downloadPath : undefined, kind === "loops" ? name(track.file) : undefined, leases);
     if (result.error) throw new Error(result.error);

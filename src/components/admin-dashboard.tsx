@@ -1,6 +1,6 @@
 "use client";
 
-import { storedBeatWav, uploadStorageFile } from "@/lib/storage-upload";
+import { uploadStorageFile } from "@/lib/storage-upload";
 import { useId, useRef, useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { logout } from "@/app/auth/actions";
@@ -104,16 +104,11 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
           values.set("cover", await croppedCover(coverCrop));
         }
         let generatedDuration: number | null = null;
-        const previewStart = Number(values.get("previewStart") || 0);
-        let sourceWav = values.get("wav");
+        const sourceWav = values.get("wav");
         const replacingSource = sourceWav instanceof File && sourceWav.size > 0;
-        if (kind === "beats" && track && !replacingSource && previewStart !== (track.preview_start_seconds ?? 0)) {
-          setStatus("Reading original WAV…");
-          sourceWav = await storedBeatWav(supabase, track.id);
-        }
         if (kind === "beats" && sourceWav instanceof File && sourceWav.size) {
           const { wavToMp3 } = await import("@/lib/wav-to-mp3");
-          const generated = await wavToMp3(sourceWav, setStatus, previewStart);
+          const generated = await wavToMp3(sourceWav, setStatus);
           if (replacingSource) values.set("mp3", generated.mp3);
           values.set("preview", generated.preview);
           generatedDuration = generated.duration;
@@ -134,7 +129,7 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
           genre: track?.genre || "", musical_key: track?.musical_key || "",
           description: track?.description || "",
           moods: track?.moods || [], tags: list(values.get("tags"), ","), notes: [...new Set([...list(values.get("notes"), "\n"), ...parsed.notes])],
-          preview_start_seconds: kind === "beats" ? previewStart : 0, preview_path: previewPath, cover_path: kind === "beats" ? cover?.path || track?.cover_path || null : null,
+          preview_start_seconds: 0, preview_path: previewPath, cover_path: kind === "beats" ? cover?.path || track?.cover_path || null : null,
           published: track?.published ?? true,
         };
         const leases = ([{lease:"mp3" as const, upload:mp3}, {lease:"wav" as const, upload:wav}]).flatMap(({lease,upload})=>upload ? [{lease,path:upload.path,name:upload.file.name.replace(/[^\w. ()-]/g,"_").slice(0,200)}] : []);
@@ -172,8 +167,7 @@ export function TrackForm({ kind, track, onSaved, onCancel }: {
           <label>Tags<span className="admin-hint">Separate with commas</span><input name="tags" maxLength={2400} defaultValue={track?.tags.join(", ")} /></label>
           <label>Additional notes<span className="admin-hint">One per line</span><textarea name="notes" maxLength={15000} rows={2} defaultValue={track?.notes.join("\n")} /></label>
           {kind === "beats" ? <>
-            <label>Beat audio (WAV)<span className="admin-hint">One file creates the full WAV + 320 kbps MP3 downloads and a 30-second preview{track ? " · leave empty to keep current audio" : ""}</span><input name="wav" type="file" accept=".wav" required={!track} onChange={event => { setWavFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0]); }} /></label>
-            <label>Preview starts at (seconds)<span className="admin-hint">Optional · defaults to 0 · plays up to 30 seconds from here</span><input name="previewStart" type="number" min={0} step={0.1} defaultValue={track?.preview_start_seconds ?? 0} /></label>
+            <label>Beat audio (WAV)<span className="admin-hint">One file creates the full WAV + 320 kbps MP3 downloads and a full length preview{track ? " · leave empty to keep current audio" : ""}</span><input name="wav" type="file" accept=".wav" required={!track} onChange={event => { setWavFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0]); }} /></label>
             <CoverCropper value={coverCrop} onChange={setCoverCrop} onLoading={setCoverLoading} existingCover={Boolean(track?.cover_path)} />
           </> : <>
             <label>Playback audio<span className="admin-hint">Public{track ? " · leave empty to keep current" : ""}</span><input name="preview" type="file" accept=".mp3,.wav,.ogg,.m4a,.flac" required={!track} onChange={event => { setPreviewFile(event.target.files?.[0] || null); readFilename(event.target.files?.[0], true); }} /></label>

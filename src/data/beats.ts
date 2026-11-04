@@ -1,5 +1,6 @@
 export type Beat = {
   id: string;
+  kind?: "beats" | "loops";
   title: string;
   genre?: string;
   bpm: number;
