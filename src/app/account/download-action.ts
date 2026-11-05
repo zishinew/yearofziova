@@ -49,7 +49,10 @@ export async function downloadPurchase(purchaseId: string, format?: "mp3" | "wav
   ].filter(Boolean).join(" ").replace(/[<>:"/\\|?*%#&\p{Cc}]/gu, " ").replace(/\s+/g, " ").trim();
   const downloadName = extension ? `${name || "Beat"} @yearofziova.${extension}` : product.download_name;
   const { data: signed, error: storageError } = await db.storage.from("purchased-beats")
-    .createSignedUrl(product.storage_path, 60, { download: downloadName });
+    .createSignedUrl(product.storage_path, 60);
   if (storageError || !signed) return { error: "Couldn't prepare your download. Please try again." };
-  return { url: signed.signedUrl };
+  // Set the filename after signing to avoid the SDK encoding it twice.
+  const url = new URL(signed.signedUrl);
+  url.searchParams.set("download", downloadName);
+  return { url: url.toString() };
 }

@@ -18,16 +18,15 @@ test("WAV includes MP3, but MP3 never grants WAV and another user's purchase gra
  const product = format => ({
   lease: format, catalog_track_id: id, storage_path: `beat.${format}`, download_name: `beat.${format}`,
   title: "journey to you", bpm: 134,
-  catalog_tracks: {title:"journey to you",bpm:134,musical_key:"C Major",notes:["Detuned 50 cents"]},
+  catalog_tracks: {title:"journey to you",bpm:134,musical_key:"F♯ minor",notes:["Detuned 50 cents"]},
  });
- globalThis.leaseFixture={db:{from(table){const q={select(){return q;},eq(){return q;},async single(){return {data:table==="purchases" ? {user_id:owner,checkout_orders:null,download_products:product(lease)} : product("mp3")};}};return q;},storage:{from(){return {async createSignedUrl(path, _expires, {download}){signed.push([path, download]);return {data:{signedUrl:"https://example.test/file"}};}};}}}};
+ globalThis.leaseFixture={db:{from(table){const q={select(){return q;},eq(){return q;},async single(){return {data:table==="purchases" ? {user_id:owner,checkout_orders:null,download_products:product(lease)} : product("mp3")};}};return q;},storage:{from(){return {async createSignedUrl(path){signed.push(path);return {data:{signedUrl:"https://example.test/file"}};}};}}}};
  try {
-  assert.ok((await downloadPurchase(id,"mp3")).url);
-  assert.ok((await downloadPurchase(id,"wav")).url);
-  assert.deepEqual(signed,[
-   ["beat.mp3","journey to you 134bpm C Major detuned -50 cents @yearofziova.mp3"],
-   ["beat.wav","journey to you 134bpm C Major detuned -50 cents @yearofziova.wav"],
-  ]);
+  const mp3 = new URL((await downloadPurchase(id,"mp3")).url);
+  const wav = new URL((await downloadPurchase(id,"wav")).url);
+  assert.deepEqual(signed,["beat.mp3","beat.wav"]);
+  assert.equal(mp3.searchParams.get("download"),"journey to you 134bpm F♯ minor detuned -50 cents @yearofziova.mp3");
+  assert.equal(wav.searchParams.get("download"),"journey to you 134bpm F♯ minor detuned -50 cents @yearofziova.wav");
   signed=[];lease="mp3";
   assert.match((await downloadPurchase(id,"wav")).error,/isn't included/);assert.equal(signed.length,0);
   lease="wav";owner="other";
